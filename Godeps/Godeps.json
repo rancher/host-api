@@ -1,0 +1,95 @@
+{
+	"ImportPath": "github.com/rancherio/host-api",
+	"GoVersion": "go1.3",
+	"Deps": [
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.6.0-5-gf92b795",
+			"Rev": "f92b7950b372b1db80bd3527e4d40e42555fe6c2"
+		},
+		{
+			"ImportPath": "github.com/dgrijalva/jwt-go",
+			"Comment": "v2.2.0-2-g47b263f",
+			"Rev": "47b263f020574c14765ecc3ea88f0e9447046632"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/archive",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/fileutils",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/ioutils",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/pools",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/promise",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/system",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/pkg/units",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
+			"Comment": "v1.3.0-412-gb18efee",
+			"Rev": "b18efeeb7affdd5b920f7aecef8eb83dd1c83d50"
+		},
+		{
+			"ImportPath": "github.com/fsouza/go-dockerclient",
+			"Comment": "0.2.1-310-ge23bddf",
+			"Rev": "e23bddf4d999bdcb20dfc54b8266ce1159494798"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
+		},
+		{
+			"ImportPath": "github.com/google/cadvisor/client",
+			"Comment": "0.5.0-25-g52a2e02",
+			"Rev": "52a2e027fa512bf4e85fb014b7c408d31ea63b73"
+		},
+		{
+			"ImportPath": "github.com/google/cadvisor/info",
+			"Comment": "0.5.0-25-g52a2e02",
+			"Rev": "52a2e027fa512bf4e85fb014b7c408d31ea63b73"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "e444e69cbd2e2e3e0749a2f3c717cec491552bbf"
+		},
+		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "ea78a26f8048532764e0a020ee901572dc7f6046"
+		},
+		{
+			"ImportPath": "github.com/rakyll/globalconf",
+			"Rev": "415abc325023f1a00cd2d9fa512e0e71745791a2"
+		},
+		{
+			"ImportPath": "github.com/rakyll/goini",
+			"Rev": "907cca0f578a5316fb864ec6992dc3d9730ec58c"
+		}
+	]
+}

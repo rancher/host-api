@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cd $(dirname $0)/..
+
+for i in bin gopath; do
+    if [ -e $i ]; then
+        rm -rf $i
+    fi
+done
