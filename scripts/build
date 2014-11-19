@@ -2,6 +2,10 @@
 
 cd $(dirname $0)/..
 
+if [ -f ./build/bootstrap.envs ];then
+    . ./build/bootstrap.envs
+fi
+
 export GOPATH=$(pwd)/Godeps/_workspace:$(pwd)/gopath
 
 PACKAGE=./gopath/src/$(<.package)

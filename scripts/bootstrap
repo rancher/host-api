@@ -8,10 +8,14 @@ function install_go {
         ca-certificates git mercurial bzr
     mkdir /goroot && curl https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz | tar xvzf - -C /goroot --strip-components=1
     echo $PWD
-    echo "export GOROOT=\"/goroot\"" > bootstrap.envs
-    echo "export PATH=\"$PATH:/goroot/bin\"" >> bootstrap.envs
+    echo "export GOROOT=\"/goroot\"" > ./build/bootstrap.envs
+    echo "export PATH=\"$PATH:/goroot/bin\"" >> ./build/bootstrap.envs
 }
 
+
+if [ ! -d ./build ];then
+    mkdir ./build
+fi
 
 # You just need go
 if [ ! $(command -v go) ]; then

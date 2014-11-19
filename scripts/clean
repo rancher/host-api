@@ -7,3 +7,7 @@ for i in bin gopath; do
         rm -rf $i
     fi
 done
+
+if [ -d ./build ];then
+    rm -rf ./build
+fi
