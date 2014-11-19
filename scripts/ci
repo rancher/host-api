@@ -1,7 +1,14 @@
 #!/bin/bash
 
+set -e -x
+
 cd $(dirname $0)/..
 
 ./scripts/bootstrap
+
+if [ -f bootstrap.envs ];then 
+    . bootstrap.envs
+fi
+
 ./scripts/build
 ./scripts/test

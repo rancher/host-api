@@ -1,7 +1,20 @@
 #!/bin/bash
 
+set -e -x
+
+function install_go {
+    # Taken from Google/golang Dockerfile...
+    apt-get update -y && apt-get install --no-install-recommends -y -q curl build-essential \
+        ca-certificates git mercurial bzr
+    mkdir /goroot && curl https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz | tar xvzf - -C /goroot --strip-components=1
+    echo $PWD
+    echo "export GOROOT=\"/goroot\"" > bootstrap.envs
+    echo "export PATH=\"$PATH:/goroot/bin\"" >> bootstrap.envs
+}
+
+
 # You just need go
-if [ ! -e $(which go) ]; then
-    echo "You need to install go 1.3, sorry I don't do that magically."
-    exit 1
+if [ ! $(command -v go) ]; then
+    echo "Going to try installing Go..."
+    install_go
 fi
