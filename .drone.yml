@@ -1,3 +1,3 @@
-image: rancher/docker-dind-base
+image: golang
 script:
  - ./scripts/ci

@@ -1,9 +1,10 @@
 #!/bin/bash
 
-set -e -x
+set -e
 
 cd $(dirname $0)/..
 
 ./scripts/bootstrap
 ./scripts/build
 ./scripts/test
+./scripts/package

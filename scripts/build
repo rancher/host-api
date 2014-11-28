@@ -10,6 +10,10 @@ export GOPATH=$(pwd)/Godeps/_workspace:$(pwd)/gopath
 
 PACKAGE=./gopath/src/$(<.package)
 
+if [ -L ${PACKAGE} ]; then
+    rm ${PACKAGE}
+fi
+
 if [ ! -e ${PACKAGE} ]; then
     mkdir -p $(dirname $PACKAGE)
     ln -s $(pwd) $PACKAGE
