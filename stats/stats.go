@@ -3,13 +3,14 @@ package stats
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/rancherio/host-api/config"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/google/cadvisor/client"
 	"github.com/google/cadvisor/info"
 	"github.com/gorilla/mux"
+	"github.com/rancherio/host-api/config"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -96,9 +97,18 @@ func resolveContainer(id string) (string, error) {
 		return "", err
 	}
 
-	//if config.Config.Systemd {
-	return fmt.Sprintf("system.slice/docker-%s.scope", container.ID), nil
-	//} else {
-	//return fmt.Sprintf("docker/%s", container.ID), nil
-	//}
+	if useSystemd() {
+		return fmt.Sprintf("system.slice/docker-%s.scope", container.ID), nil
+	} else {
+		return fmt.Sprintf("docker/%s", container.ID), nil
+	}
+}
+
+func useSystemd() bool {
+	s, err := os.Stat("/run/systemd/system")
+	if err != nil || !s.IsDir() {
+		return false
+	}
+
+	return true
 }
