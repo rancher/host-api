@@ -1,9 +1,10 @@
 package stats
 
 import (
-	"github.com/gorilla/websocket"
 	"net/http"
 	"strings"
+
+	"github.com/gorilla/websocket"
 )
 
 type connection struct {

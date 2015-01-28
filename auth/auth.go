@@ -1,20 +1,49 @@
 package auth
 
 import (
+	"io/ioutil"
+	"net/http"
+
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/golang/glog"
 	"github.com/rancherio/host-api/app/common"
 	"github.com/rancherio/host-api/config"
-	jwt "github.com/dgrijalva/jwt-go"
-	"net/http"
 )
+
+var fileBytes []byte
 
 func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	if !config.Config.Auth {
+		glog.Infoln("Host_API auth is disabled")
 		return true
 	}
+	getToken := req.URL.Query().Get("token")
 
-	token, err := jwt.ParseFromRequest(req, func(token *jwt.Token) (interface{}, error) {
-		return config.Config.Key, nil
+	if len(getToken) == 0 {
+		return false
+	}
+	glog.Infoln("Enabling Authencation for Host_API")
+
+	if len(fileBytes) == 0 {
+		file, err := ioutil.ReadFile(config.Config.Key)
+		if err != nil {
+			glog.Error("Error reading file")
+			return false
+		}
+		fileBytes = file
+	} else {
+		glog.Infoln("Reading cached content")
+	}
+	token, err := jwt.Parse(getToken, func(token *jwt.Token) (interface{}, error) {
+		return fileBytes, nil
 	})
+
+	if err == nil && token.Valid {
+		glog.Infoln("Authentication Successful")
+
+	} else {
+		glog.Infoln("Authentication Failed, Invalid Token")
+	}
 
 	if err != nil {
 		common.CheckError(err, 2)
@@ -25,7 +54,10 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 		return false
 	}
 
-	if token.Claims["hostUuid"] != config.Config.HostUuid {
+	if token.Claims["reportedUuid"] != nil && token.Claims["reportedUuid"] != config.Config.HostUuid {
+		return false
+	}
+	if token.Claims["hostUuid"] != nil && token.Claims["hostUuid"] != config.Config.HostUuid {
 		return false
 	}
 
