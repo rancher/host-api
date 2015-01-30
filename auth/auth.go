@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"io/ioutil"
 	"net/http"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -9,8 +8,6 @@ import (
 	"github.com/rancherio/host-api/app/common"
 	"github.com/rancherio/host-api/config"
 )
-
-var fileBytes []byte
 
 func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	if !config.Config.Auth {
@@ -22,26 +19,9 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 		return false
 	}
 
-	if len(fileBytes) == 0 {
-		file, err := ioutil.ReadFile(config.Config.Key)
-		if err != nil {
-			glog.Error("Error reading file")
-			return false
-		}
-		fileBytes = file
-	} else {
-		glog.Infoln("Reading cached content")
-	}
 	token, err := jwt.Parse(getToken, func(token *jwt.Token) (interface{}, error) {
-		return fileBytes, nil
+		return config.FileBytes, nil
 	})
-
-	if err == nil && token.Valid {
-		glog.Infoln("Authentication Successful")
-
-	} else {
-		glog.Infoln("Authentication Failed, Invalid Token")
-	}
 
 	if err != nil {
 		common.CheckError(err, 2)
@@ -53,6 +33,7 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	}
 
 	if token.Claims["hostUuid"] != config.Config.HostUuid {
+		glog.Infoln("Host UUID mismatch , authentication failed")
 		return false
 	}
 
