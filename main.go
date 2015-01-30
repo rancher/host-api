@@ -10,6 +10,7 @@ import (
 	"github.com/rancherio/host-api/app/common"
 	"github.com/rancherio/host-api/auth"
 	"github.com/rancherio/host-api/config"
+	"github.com/rancherio/host-api/logs"
 	"github.com/rancherio/host-api/stats"
 
 	"github.com/golang/glog"
@@ -32,6 +33,7 @@ func main() {
 
 	router.Handle("/v1/stats", common.ErrorHandler(stats.GetStats)).Methods("GET")
 	router.Handle("/v1/stats/{id}", common.ErrorHandler(stats.GetStats)).Methods("GET")
+	router.Handle("/v1/logs/", common.ErrorHandler(logs.GetLogs)).Methods("GET")
 
 	var listen = fmt.Sprintf("%s:%d", config.Config.Ip, config.Config.Port)
 	err = http.ListenAndServe(listen, nil)

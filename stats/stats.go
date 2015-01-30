@@ -7,6 +7,7 @@ import (
 	"github.com/google/cadvisor/client"
 	"github.com/google/cadvisor/info"
 	"github.com/gorilla/mux"
+	"github.com/rancherio/host-api/app/common/connect"
 	"github.com/rancherio/host-api/config"
 	"io"
 	"net/http"
@@ -27,7 +28,7 @@ func GetStats(rw http.ResponseWriter, req *http.Request) error {
 		return err
 	}
 
-	conn, err := getConnection(rw, req)
+	conn, err := connect.GetConnection(rw, req)
 	if err != nil {
 		return err
 	}
