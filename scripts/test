@@ -1,3 +1,12 @@
 #!/bin/bash
 
+set -e
+
+result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -s -l)
+for i in $result; do
+    echo $i
+done
+
+[ -n "$result" ] && exit 1
+
 echo OK

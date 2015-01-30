@@ -1,9 +1,9 @@
 package auth
 
 import (
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/rancherio/host-api/app/common"
 	"github.com/rancherio/host-api/config"
-	jwt "github.com/dgrijalva/jwt-go"
 	"net/http"
 )
 
