@@ -47,7 +47,6 @@ func httpInterceptor(router http.Handler) http.Handler {
 		startTime := time.Now()
 
 		if !auth.Auth(w, req) {
-			glog.Infoln("Host_API validation failed")
 			http.Error(w, "Failed authentication", 401)
 			return
 		}

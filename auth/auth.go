@@ -14,7 +14,6 @@ var fileBytes []byte
 
 func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	if !config.Config.Auth {
-		glog.Infoln("Host_API auth is disabled")
 		return true
 	}
 	getToken := req.URL.Query().Get("token")
@@ -22,7 +21,6 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	if len(getToken) == 0 {
 		return false
 	}
-	glog.Infoln("Enabling Authencation for Host_API")
 
 	if len(fileBytes) == 0 {
 		file, err := ioutil.ReadFile(config.Config.Key)
@@ -54,10 +52,7 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 		return false
 	}
 
-	if token.Claims["reportedUuid"] != nil && token.Claims["reportedUuid"] != config.Config.HostUuid {
-		return false
-	}
-	if token.Claims["hostUuid"] != nil && token.Claims["hostUuid"] != config.Config.HostUuid {
+	if token.Claims["hostUuid"] != config.Config.HostUuid {
 		return false
 	}
 
