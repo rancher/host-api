@@ -20,7 +20,7 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	}
 
 	token, err := jwt.Parse(getToken, func(token *jwt.Token) (interface{}, error) {
-		return config.FileBytes, nil
+		return config.Config.KeyBytes, nil
 	})
 
 	if err != nil {

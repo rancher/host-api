@@ -22,10 +22,10 @@ type config struct {
 	HostUuid    string
 	Port        int
 	Ip          string
+	KeyBytes    interface{}
 }
 
 var Config config
-var FileBytes interface{}
 
 func Parse() error {
 	flag.IntVar(&Config.Port, "port", 8080, "Listen port")
@@ -69,7 +69,7 @@ func Parse() error {
 	if !ok {
 		glog.Error("Fatal error")
 	}
-	FileBytes = pubkey
+	Config.KeyBytes = pubkey
 
 	s, err := os.Stat("/run/systemd/system")
 	if err != nil || !s.IsDir() {
