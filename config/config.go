@@ -1,9 +1,15 @@
 package config
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
-	"github.com/rakyll/globalconf"
+	"io/ioutil"
 	"os"
+
+	"github.com/golang/glog"
+	"github.com/rakyll/globalconf"
 )
 
 type config struct {
@@ -16,6 +22,7 @@ type config struct {
 	HostUuid    string
 	Port        int
 	Ip          string
+	KeyBytes    interface{}
 }
 
 var Config config
@@ -46,6 +53,23 @@ func Parse() error {
 	}
 
 	conf.ParseAll()
+
+	keyBytes, err := ioutil.ReadFile(Config.Key)
+	if err != nil {
+		glog.Error("Error reading file")
+		return err
+	}
+
+	block, _ := pem.Decode(keyBytes)
+	pubkeyInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		glog.Error("Error parsing public key")
+	}
+	pubkey, ok := pubkeyInterface.(*rsa.PublicKey)
+	if !ok {
+		glog.Error("Fatal error")
+	}
+	Config.KeyBytes = pubkey
 
 	s, err := os.Stat("/run/systemd/system")
 	if err != nil || !s.IsDir() {

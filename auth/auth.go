@@ -1,19 +1,26 @@
 package auth
 
 import (
+	"net/http"
+
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/golang/glog"
 	"github.com/rancherio/host-api/app/common"
 	"github.com/rancherio/host-api/config"
-	jwt "github.com/dgrijalva/jwt-go"
-	"net/http"
 )
 
 func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	if !config.Config.Auth {
 		return true
 	}
+	getToken := req.URL.Query().Get("token")
 
-	token, err := jwt.ParseFromRequest(req, func(token *jwt.Token) (interface{}, error) {
-		return config.Config.Key, nil
+	if len(getToken) == 0 {
+		return false
+	}
+
+	token, err := jwt.Parse(getToken, func(token *jwt.Token) (interface{}, error) {
+		return config.Config.KeyBytes, nil
 	})
 
 	if err != nil {
@@ -26,6 +33,7 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	}
 
 	if token.Claims["hostUuid"] != config.Config.HostUuid {
+		glog.Infoln("Host UUID mismatch , authentication failed")
 		return false
 	}
 
