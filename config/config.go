@@ -1,21 +1,27 @@
 package config
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
-	"github.com/rakyll/globalconf"
+	"io/ioutil"
 	"os"
+
+	"github.com/golang/glog"
+	"github.com/rakyll/globalconf"
 )
 
 type config struct {
-	CAdvisorUrl string
-	DockerUrl   string
-	Systemd     bool
-	NumStats    int
-	Auth        bool
-	Key         string
-	HostUuid    string
-	Port        int
-	Ip          string
+	CAdvisorUrl     string
+	DockerUrl       string
+	Systemd         bool
+	NumStats        int
+	Auth            bool
+	Key             string
+	HostUuid        string
+	Port            int
+	Ip              string
+	ParsedPublicKey interface{}
 }
 
 var Config config
@@ -46,6 +52,20 @@ func Parse() error {
 	}
 
 	conf.ParseAll()
+
+	keyBytes, err := ioutil.ReadFile(Config.Key)
+	if err != nil {
+		glog.Error("Error reading file")
+		return err
+	}
+
+	block, _ := pem.Decode(keyBytes)
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	Config.ParsedPublicKey = pubKey
 
 	s, err := os.Stat("/run/systemd/system")
 	if err != nil || !s.IsDir() {
