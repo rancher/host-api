@@ -1,12 +1,11 @@
 package auth
 
 import (
-	"net/http"
-
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/rancherio/host-api/app/common"
 	"github.com/rancherio/host-api/config"
+	"net/http"
 )
 
 func Auth(rw http.ResponseWriter, req *http.Request) bool {
@@ -22,6 +21,7 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return config.Config.ParsedPublicKey, nil
 	})
+	SetToken(req, token)
 
 	if err != nil {
 		common.CheckError(err, 2)

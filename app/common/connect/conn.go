@@ -1,4 +1,4 @@
-package stats
+package connect
 
 import (
 	"github.com/gorilla/websocket"
@@ -35,7 +35,7 @@ func (conn *connection) IsContinuous() bool {
 	return conn.webConn != nil
 }
 
-func getConnection(rw http.ResponseWriter, req *http.Request) (*connection, error) {
+func GetConnection(rw http.ResponseWriter, req *http.Request) (*connection, error) {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
