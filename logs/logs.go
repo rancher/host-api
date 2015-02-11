@@ -46,16 +46,38 @@ func GetLogs(rw http.ResponseWriter, req *http.Request) error {
 	if err != nil {
 		return err
 	}
-
-	logopts := dockerClient.LogsOptions{
-		Container:    container,
-		OutputStream: conn,
-		Follow:       follow,
-		Stdout:       true,
-		Stderr:       true,
-		Timestamps:   true,
-		Tail:         tail,
-		RawTerminal:  true,
+	logOut := stdoutWriter{conn}
+	logError := stderrorWriter{conn}
+	logBoth := stdbothWriter{conn}
+	containerRef, err := client.InspectContainer(container)
+	if err != nil {
+		return err
 	}
-	return client.Logs(logopts)
+
+	if containerRef.Config.Tty == true {
+		logopts := dockerClient.LogsOptions{
+			Container:    container,
+			OutputStream: logBoth,
+			Follow:       follow,
+			Stdout:       true,
+			Stderr:       true,
+			Timestamps:   true,
+			Tail:         tail,
+			RawTerminal:  true,
+		}
+		return client.Logs(logopts)
+	} else {
+		logopts := dockerClient.LogsOptions{
+			Container:    container,
+			OutputStream: logOut,
+			ErrorStream:  logError,
+			Follow:       follow,
+			Stdout:       true,
+			Stderr:       true,
+			Timestamps:   true,
+			Tail:         tail,
+			RawTerminal:  false,
+		}
+		return client.Logs(logopts)
+	}
 }
