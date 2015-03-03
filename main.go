@@ -9,6 +9,7 @@ import (
 	"github.com/rancherio/host-api/app/common"
 	"github.com/rancherio/host-api/auth"
 	"github.com/rancherio/host-api/config"
+	"github.com/rancherio/host-api/events"
 	"github.com/rancherio/host-api/logs"
 	"github.com/rancherio/host-api/stats"
 
@@ -27,6 +28,13 @@ func main() {
 	flag.Parse()
 	defer glog.Flush()
 
+	err = startDockerEventListener()
+
+	if err != nil {
+		glog.Error(err)
+		os.Exit(1)
+	}
+
 	router := mux.NewRouter()
 	http.Handle("/", auth.AuthHttpInterceptor(router))
 
@@ -41,4 +49,21 @@ func main() {
 		glog.Error(err)
 		os.Exit(1)
 	}
+}
+
+func startDockerEventListener() error {
+	dockerClient, err := events.NewDockerClient(false)
+	if err != nil {
+		return err
+	}
+	handler := &events.StartHandler{
+		Client: dockerClient,
+	}
+	handlers := map[string]events.Handler{"start": handler}
+	router, err := events.NewEventRouter(10, 10, dockerClient, handlers)
+	if err != nil {
+		return err
+	}
+	router.Start()
+	return nil
 }

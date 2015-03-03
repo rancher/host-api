@@ -21,5 +21,16 @@ if [ ! $(command -v go) ]; then
     install_go
 fi
 
+if [ ! -x "$(which nsenter)" ]; then
+    TMP=$(mktemp -d)
+    trap "rm -rf $TMP" exit
+
+    cd $TMP
+    wget https://github.com/rancherio/agent-binaries/releases/download/v0.1.2/agent-binaries.tar.gz
+    tar xzf agent-binaries.tar.gz
+    find -type f -name nsenter -exec cp -v {} /usr/local/bin/nsenter \;
+    chmod +x /usr/local/bin/nsenter
+fi
+
 apt-get update
 apt-get install -y uuid-runtime
