@@ -25,9 +25,10 @@ type APIImages struct {
 	Created     int64    `json:"Created,omitempty" yaml:"Created,omitempty"`
 	Size        int64    `json:"Size,omitempty" yaml:"Size,omitempty"`
 	VirtualSize int64    `json:"VirtualSize,omitempty" yaml:"VirtualSize,omitempty"`
-	ParentId    string   `json:"ParentId,omitempty" yaml:"ParentId,omitempty"`
+	ParentID    string   `json:"ParentId,omitempty" yaml:"ParentId,omitempty"`
 }
 
+// Image is the type representing a docker image and its various properties
 type Image struct {
 	ID              string    `json:"Id" yaml:"Id"`
 	Parent          string    `json:"Parent,omitempty" yaml:"Parent,omitempty"`
@@ -52,6 +53,8 @@ type ImageHistory struct {
 	Size      int64    `json:"Size,omitempty" yaml:"Size,omitempty"`
 }
 
+// ImagePre012 serves the same purpose as the Image type except that it is for
+// earlier versions of the Docker API (pre-012 to be specific)
 type ImagePre012 struct {
 	ID              string    `json:"id"`
 	Parent          string    `json:"parent,omitempty"`
@@ -64,6 +67,14 @@ type ImagePre012 struct {
 	Config          *Config   `json:"config,omitempty"`
 	Architecture    string    `json:"architecture,omitempty"`
 	Size            int64     `json:"size,omitempty"`
+}
+
+// ListImagesOptions specify parameters to the ListImages function.
+//
+// See http://goo.gl/2rOLFF for more details.
+type ListImagesOptions struct {
+	All     bool
+	Filters map[string][]string
 }
 
 var (
@@ -85,14 +96,9 @@ var (
 
 // ListImages returns the list of available images in the server.
 //
-// See http://goo.gl/VmcR6v for more details.
-func (c *Client) ListImages(all bool) ([]APIImages, error) {
-	path := "/images/json?all="
-	if all {
-		path += "1"
-	} else {
-		path += "0"
-	}
+// See http://goo.gl/2rOLFF for more details.
+func (c *Client) ListImages(opts ListImagesOptions) ([]APIImages, error) {
+	path := "/images/json?" + queryString(opts)
 	body, _, err := c.do("GET", path, nil)
 	if err != nil {
 		return nil, err
@@ -135,6 +141,28 @@ func (c *Client) RemoveImage(name string) error {
 	return err
 }
 
+// RemoveImageOptions present the set of options available for removing an image
+// from a registry.
+//
+// See http://goo.gl/6V48bF for more details.
+type RemoveImageOptions struct {
+	Force   bool `qs:"force"`
+	NoPrune bool `qs:"noprune"`
+}
+
+// RemoveImageExtended removes an image by its name or ID.
+// Extra params can be passed, see RemoveImageOptions
+//
+// See http://goo.gl/znj0wM for more details.
+func (c *Client) RemoveImageExtended(name string, opts RemoveImageOptions) error {
+	uri := fmt.Sprintf("/images/%s?%s", name, queryString(&opts))
+	_, status, err := c.do("DELETE", uri, nil)
+	if status == http.StatusNotFound {
+		return ErrNoSuchImage
+	}
+	return err
+}
+
 // InspectImage returns an image by its name or ID.
 //
 // See http://goo.gl/Q112NY for more details.
@@ -150,7 +178,7 @@ func (c *Client) InspectImage(name string) (*Image, error) {
 	var image Image
 
 	// if the caller elected to skip checking the server's version, assume it's the latest
-	if c.SkipServerVersionCheck || c.expectedApiVersion.GreaterThanOrEqualTo(apiVersion_1_12) {
+	if c.SkipServerVersionCheck || c.expectedAPIVersion.GreaterThanOrEqualTo(apiVersion1_12) {
 		err = json.Unmarshal(body, &image)
 		if err != nil {
 			return nil, err
@@ -327,6 +355,7 @@ func (c *Client) ImportImage(opts ImportImageOptions) error {
 // http://goo.gl/tlPXPu.
 type BuildImageOptions struct {
 	Name                string             `qs:"t"`
+	Dockerfile          string             `qs:"dockerfile"`
 	NoCache             bool               `qs:"nocache"`
 	SuppressOutput      bool               `qs:"q"`
 	RmTmpContainer      bool               `qs:"rm"`

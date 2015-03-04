@@ -34,22 +34,22 @@ var (
 	// ErrConnectionRefused is returned when the client cannot connect to the given endpoint.
 	ErrConnectionRefused = errors.New("cannot connect to Docker endpoint")
 
-	apiVersion_1_12, _ = NewApiVersion("1.12")
+	apiVersion1_12, _ = NewAPIVersion("1.12")
 )
 
-// ApiVersion is an internal representation of a version of the Remote API.
-type ApiVersion []int
+// APIVersion is an internal representation of a version of the Remote API.
+type APIVersion []int
 
-// NewApiVersion returns an instance of ApiVersion for the given string.
+// NewAPIVersion returns an instance of APIVersion for the given string.
 //
 // The given string must be in the form <major>.<minor>.<patch>, where <major>,
 // <minor> and <patch> are integer numbers.
-func NewApiVersion(input string) (ApiVersion, error) {
+func NewAPIVersion(input string) (APIVersion, error) {
 	if !strings.Contains(input, ".") {
 		return nil, fmt.Errorf("Unable to parse version %q", input)
 	}
 	arr := strings.Split(input, ".")
-	ret := make(ApiVersion, len(arr))
+	ret := make(APIVersion, len(arr))
 	var err error
 	for i, val := range arr {
 		ret[i], err = strconv.Atoi(val)
@@ -60,7 +60,7 @@ func NewApiVersion(input string) (ApiVersion, error) {
 	return ret, nil
 }
 
-func (version ApiVersion) String() string {
+func (version APIVersion) String() string {
 	var str string
 	for i, val := range version {
 		str += strconv.Itoa(val)
@@ -71,23 +71,27 @@ func (version ApiVersion) String() string {
 	return str
 }
 
-func (version ApiVersion) LessThan(other ApiVersion) bool {
+// LessThan is a function for comparing APIVersion structs
+func (version APIVersion) LessThan(other APIVersion) bool {
 	return version.compare(other) < 0
 }
 
-func (version ApiVersion) LessThanOrEqualTo(other ApiVersion) bool {
+// LessThanOrEqualTo is a function for comparing APIVersion structs
+func (version APIVersion) LessThanOrEqualTo(other APIVersion) bool {
 	return version.compare(other) <= 0
 }
 
-func (version ApiVersion) GreaterThan(other ApiVersion) bool {
+// GreaterThan is a function for comparing APIVersion structs
+func (version APIVersion) GreaterThan(other APIVersion) bool {
 	return version.compare(other) > 0
 }
 
-func (version ApiVersion) GreaterThanOrEqualTo(other ApiVersion) bool {
+// GreaterThanOrEqualTo is a function for comparing APIVersion structs
+func (version APIVersion) GreaterThanOrEqualTo(other APIVersion) bool {
 	return version.compare(other) >= 0
 }
 
-func (version ApiVersion) compare(other ApiVersion) int {
+func (version APIVersion) compare(other APIVersion) int {
 	for i, v := range version {
 		if i <= len(other)-1 {
 			otherVersion := other[i]
@@ -118,9 +122,9 @@ type Client struct {
 	endpoint            string
 	endpointURL         *url.URL
 	eventMonitor        *eventMonitoringState
-	requestedApiVersion ApiVersion
-	serverApiVersion    ApiVersion
-	expectedApiVersion  ApiVersion
+	requestedAPIVersion APIVersion
+	serverAPIVersion    APIVersion
+	expectedAPIVersion  APIVersion
 }
 
 // NewClient returns a Client instance ready for communication with the given
@@ -154,9 +158,9 @@ func NewVersionedClient(endpoint string, apiVersionString string) (*Client, erro
 	if err != nil {
 		return nil, err
 	}
-	var requestedApiVersion ApiVersion
+	var requestedAPIVersion APIVersion
 	if strings.Contains(apiVersionString, ".") {
-		requestedApiVersion, err = NewApiVersion(apiVersionString)
+		requestedAPIVersion, err = NewAPIVersion(apiVersionString)
 		if err != nil {
 			return nil, err
 		}
@@ -166,20 +170,25 @@ func NewVersionedClient(endpoint string, apiVersionString string) (*Client, erro
 		endpoint:            endpoint,
 		endpointURL:         u,
 		eventMonitor:        new(eventMonitoringState),
-		requestedApiVersion: requestedApiVersion,
+		requestedAPIVersion: requestedAPIVersion,
 	}, nil
 }
 
-// NewVersionnedTLSClient returns a Client instance ready for TLS communications with the givens
-// server endpoint, key and certificates, using a specific remote API version.
+// NewVersionnedTLSClient has been DEPRECATED, please use NewVersionedTLSClient.
 func NewVersionnedTLSClient(endpoint string, cert, key, ca, apiVersionString string) (*Client, error) {
+	return NewVersionedTLSClient(endpoint, cert, key, ca, apiVersionString)
+}
+
+// NewVersionedTLSClient returns a Client instance ready for TLS communications with the givens
+// server endpoint, key and certificates, using a specific remote API version.
+func NewVersionedTLSClient(endpoint string, cert, key, ca, apiVersionString string) (*Client, error) {
 	u, err := parseEndpoint(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	var requestedApiVersion ApiVersion
+	var requestedAPIVersion APIVersion
 	if strings.Contains(apiVersionString, ".") {
-		requestedApiVersion, err = NewApiVersion(apiVersionString)
+		requestedAPIVersion, err = NewAPIVersion(apiVersionString)
 		if err != nil {
 			return nil, err
 		}
@@ -217,23 +226,23 @@ func NewVersionnedTLSClient(endpoint string, cert, key, ca, apiVersionString str
 		endpoint:            endpoint,
 		endpointURL:         u,
 		eventMonitor:        new(eventMonitoringState),
-		requestedApiVersion: requestedApiVersion,
+		requestedAPIVersion: requestedAPIVersion,
 	}, nil
 }
 
-func (c *Client) checkApiVersion() error {
-	serverApiVersionString, err := c.getServerApiVersionString()
+func (c *Client) checkAPIVersion() error {
+	serverAPIVersionString, err := c.getServerAPIVersionString()
 	if err != nil {
 		return err
 	}
-	c.serverApiVersion, err = NewApiVersion(serverApiVersionString)
+	c.serverAPIVersion, err = NewAPIVersion(serverAPIVersionString)
 	if err != nil {
 		return err
 	}
-	if c.requestedApiVersion == nil {
-		c.expectedApiVersion = c.serverApiVersion
+	if c.requestedAPIVersion == nil {
+		c.expectedAPIVersion = c.serverAPIVersion
 	} else {
-		c.expectedApiVersion = c.requestedApiVersion
+		c.expectedAPIVersion = c.requestedAPIVersion
 	}
 	return nil
 }
@@ -253,7 +262,7 @@ func (c *Client) Ping() error {
 	return nil
 }
 
-func (c *Client) getServerApiVersionString() (version string, err error) {
+func (c *Client) getServerAPIVersionString() (version string, err error) {
 	body, status, err := c.do("GET", "/version", nil)
 	if err != nil {
 		return "", err
@@ -279,8 +288,8 @@ func (c *Client) do(method, path string, data interface{}) ([]byte, int, error) 
 		}
 		params = bytes.NewBuffer(buf)
 	}
-	if path != "/version" && !c.SkipServerVersionCheck && c.expectedApiVersion == nil {
-		err := c.checkApiVersion()
+	if path != "/version" && !c.SkipServerVersionCheck && c.expectedAPIVersion == nil {
+		err := c.checkAPIVersion()
 		if err != nil {
 			return nil, -1, err
 		}
@@ -334,8 +343,8 @@ func (c *Client) stream(method, path string, setRawTerminal, rawJSONStream bool,
 	if (method == "POST" || method == "PUT") && in == nil {
 		in = bytes.NewReader(nil)
 	}
-	if path != "/version" && !c.SkipServerVersionCheck && c.expectedApiVersion == nil {
-		err := c.checkApiVersion()
+	if path != "/version" && !c.SkipServerVersionCheck && c.expectedAPIVersion == nil {
+		err := c.checkAPIVersion()
 		if err != nil {
 			return err
 		}
@@ -423,8 +432,8 @@ func (c *Client) stream(method, path string, setRawTerminal, rawJSONStream bool,
 }
 
 func (c *Client) hijack(method, path string, success chan struct{}, setRawTerminal bool, in io.Reader, stderr, stdout io.Writer, data interface{}) error {
-	if path != "/version" && !c.SkipServerVersionCheck && c.expectedApiVersion == nil {
-		err := c.checkApiVersion()
+	if path != "/version" && !c.SkipServerVersionCheck && c.expectedAPIVersion == nil {
+		err := c.checkAPIVersion()
 		if err != nil {
 			return err
 		}
@@ -456,24 +465,34 @@ func (c *Client) hijack(method, path string, success chan struct{}, setRawTermin
 		protocol = "tcp"
 		address = c.endpointURL.Host
 	}
-	dial, err := net.Dial(protocol, address)
-	if err != nil {
-		return err
+	var dial net.Conn
+	if c.TLSConfig != nil && protocol != "unix" {
+		dial, err = tlsDial(protocol, address, c.TLSConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		dial, err = net.Dial(protocol, address)
+		if err != nil {
+			return err
+		}
 	}
-	defer dial.Close()
 	clientconn := httputil.NewClientConn(dial, nil)
+	defer clientconn.Close()
 	clientconn.Do(req)
 	if success != nil {
 		success <- struct{}{}
 		<-success
 	}
 	rwc, br := clientconn.Hijack()
+	defer rwc.Close()
 	errs := make(chan error, 2)
 	exit := make(chan bool)
 	go func() {
 		defer close(exit)
 		var err error
 		if setRawTerminal {
+			// When TTY is ON, use regular copy
 			_, err = io.Copy(stdout, br)
 		} else {
 			_, err = stdCopy(stdout, stderr, br)
@@ -500,8 +519,8 @@ func (c *Client) getURL(path string) string {
 		urlStr = ""
 	}
 
-	if c.requestedApiVersion != nil {
-		return fmt.Sprintf("%s/v%s%s", urlStr, c.requestedApiVersion, path)
+	if c.requestedAPIVersion != nil {
+		return fmt.Sprintf("%s/v%s%s", urlStr, c.requestedAPIVersion, path)
 	}
 	return fmt.Sprintf("%s%s", urlStr, path)
 }
@@ -556,6 +575,12 @@ func queryString(opts interface{}) string {
 			}
 		case reflect.Ptr:
 			if !v.IsNil() {
+				if b, err := json.Marshal(v.Interface()); err == nil {
+					items.Add(key, string(b))
+				}
+			}
+		case reflect.Map:
+			if len(v.MapKeys()) > 0 {
 				if b, err := json.Marshal(v.Interface()); err == nil {
 					items.Add(key, string(b))
 				}

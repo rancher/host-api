@@ -2,6 +2,19 @@
 
 set -e
 
+cd $(dirname $0)/..
+
+if [ -x "$(which wrapdocker)" ]; then
+    wrapdocker > /tmp/docker.log 2>&1
+    docker ps -q
+fi
+
+. ./scripts/common_functions
+
+set_project_vars
+
+go test ./...
+
 result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -s -l)
 for i in $result; do
     echo $i

@@ -6,9 +6,9 @@ if [ -f ./build/bootstrap.envs ];then
     . ./build/bootstrap.envs
 fi
 
-export GOPATH=$(pwd)/Godeps/_workspace:$(pwd)/gopath
+. ./scripts/common_functions
 
-PACKAGE=./gopath/src/$(<.package)
+set_project_vars
 
 if [ -L ${PACKAGE} ]; then
     rm ${PACKAGE}
@@ -22,4 +22,4 @@ fi
 echo export GOPATH=$GOPATH
 
 mkdir -p bin
-go build -o bin/host-api
+go build -o bin/${PROJECT}
