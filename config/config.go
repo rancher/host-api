@@ -22,9 +22,28 @@ type config struct {
 	Port            int
 	Ip              string
 	ParsedPublicKey interface{}
+	HostUuidCheck   bool
 }
 
 var Config config
+
+func ParsedPublicKey() error {
+	keyBytes, err := ioutil.ReadFile(Config.Key)
+	if err != nil {
+		glog.Error("Error reading file")
+		return err
+	}
+
+	block, _ := pem.Decode(keyBytes)
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	Config.ParsedPublicKey = pubKey
+
+	return nil
+}
 
 func Parse() error {
 	flag.IntVar(&Config.Port, "port", 8080, "Listen port")
@@ -34,6 +53,7 @@ func Parse() error {
 	flag.IntVar(&Config.NumStats, "num-stats", 600, "Number of stats to show by default")
 	flag.BoolVar(&Config.Auth, "auth", false, "Authenticate requests")
 	flag.StringVar(&Config.HostUuid, "host-uuid", "", "Host UUID")
+	flag.BoolVar(&Config.HostUuidCheck, "host-uuid-check", true, "Validate host UUID")
 	flag.StringVar(&Config.Key, "public-key", "", "Public Key for Authentication")
 
 	confOptions := &globalconf.Options{
@@ -53,19 +73,12 @@ func Parse() error {
 
 	conf.ParseAll()
 
-	keyBytes, err := ioutil.ReadFile(Config.Key)
-	if err != nil {
-		glog.Error("Error reading file")
-		return err
+	if len(Config.Key) > 0 {
+		if err := ParsedPublicKey(); err != nil {
+			glog.Error("Error reading file")
+			return err
+		}
 	}
-
-	block, _ := pem.Decode(keyBytes)
-	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return err
-	}
-
-	Config.ParsedPublicKey = pubKey
 
 	s, err := os.Stat("/run/systemd/system")
 	if err != nil || !s.IsDir() {
