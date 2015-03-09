@@ -28,8 +28,7 @@ func main() {
 	flag.Parse()
 	defer glog.Flush()
 
-	err = startDockerEventListener()
-
+	err = events.ProcessDockerEvents(config.Config.EventsPoolSize)
 	if err != nil {
 		glog.Error(err)
 		os.Exit(1)
@@ -49,21 +48,4 @@ func main() {
 		glog.Error(err)
 		os.Exit(1)
 	}
-}
-
-func startDockerEventListener() error {
-	dockerClient, err := events.NewDockerClient(false)
-	if err != nil {
-		return err
-	}
-	handler := &events.StartHandler{
-		Client: dockerClient,
-	}
-	handlers := map[string]events.Handler{"start": handler}
-	router, err := events.NewEventRouter(10, 10, dockerClient, handlers)
-	if err != nil {
-		return err
-	}
-	router.Start()
-	return nil
 }

@@ -16,7 +16,7 @@ func TestStartHandlerHappyPath(t *testing.T) {
 
 	injectedIp := "10.1.2.3"
 	c, _ := createNetTestContainer(dockerClient, injectedIp)
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
 
 	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestStartHandlerContainerNotRunning(t *testing.T) {
 
 	injectedIp := "10.1.2.3"
 	c, _ := createNetTestContainer(dockerClient, injectedIp)
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
 	// Note we aren't starting the container in this test
 
 	handler := &StartHandler{Client: dockerClient}
@@ -116,7 +116,7 @@ func assertHasIp(injectedIp string, c *docker.Container, dockerClient *docker.Cl
 		AttachStdout: true,
 		AttachStderr: false,
 		Tty:          false,
-		Cmd:          []string{"ip", "addr", "show"},
+		Cmd:          []string{"ip", "addr", "show", "eth0"},
 		Container:    c.ID,
 	}
 	createdExec, err := dockerClient.CreateExec(createExecConf)

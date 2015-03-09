@@ -9,7 +9,6 @@ import (
 
 const (
 	defaultUnixSocket = "unix:///var/run/docker.sock"
-	// TODO TO 1.17
 	defaultApiVersion = "1.16"
 )
 

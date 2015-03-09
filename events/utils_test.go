@@ -18,7 +18,7 @@ func createContainer(client *docker.Client) (*docker.Container, error) {
 func createNetTestContainer(client *docker.Client, ip string) (*docker.Container, error) {
 	env := []string{"RANCHER_IP=" + ip}
 	config := &docker.Config{
-		Image:     "ubuntu",
+		Image:     "busybox:latest",
 		Env:       env,
 		OpenStdin: true,
 		StdinOnce: false,
@@ -28,13 +28,30 @@ func createNetTestContainer(client *docker.Client, ip string) (*docker.Container
 }
 
 func pullTestImages(client *docker.Client) {
-	imageOptions := docker.PullImageOptions{
-		Repository: "tianon/true",
+	listImageOpts := docker.ListImagesOptions{}
+	images, _ := client.ListImages(listImageOpts)
+	imageMap := map[string]bool{}
+	for _, image := range images {
+		for _, tag := range image.RepoTags {
+			imageMap[tag] = true
+		}
 	}
-	imageAuth := docker.AuthConfiguration{}
-	client.PullImage(imageOptions, imageAuth)
-	imageOptions.Repository = "ubuntu"
-	client.PullImage(imageOptions, imageAuth)
+
+	var pullImage = func(repo string) {
+		if _, ok := imageMap[repo]; !ok {
+			imageOptions := docker.PullImageOptions{
+				Repository: repo,
+			}
+			imageAuth := docker.AuthConfiguration{}
+			client.PullImage(imageOptions, imageAuth)
+		}
+	}
+
+	imageName := "tianon/true:latest"
+	pullImage(imageName)
+
+	imageName = "busybox:latest"
+	pullImage(imageName)
 }
 
 func TestMain(m *testing.M) {
