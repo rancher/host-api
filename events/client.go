@@ -12,7 +12,7 @@ const (
 	defaultApiVersion = "1.16"
 )
 
-func DockerClient(useDockerConnectEnvVars bool) (*docker.Client, error) {
+func NewDockerClient(useDockerConnectEnvVars bool) (*docker.Client, error) {
 	apiVersion := getenv("DOCKER_API_VERSION", defaultApiVersion)
 	endpoint := defaultUnixSocket
 

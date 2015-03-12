@@ -1,4 +1,5 @@
 bin
+host-api
 dist
 gopath
 

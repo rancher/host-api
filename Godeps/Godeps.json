@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/rancherio/host-api",
-	"GoVersion": "go1.3",
+	"GoVersion": "go1.4",
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
@@ -89,6 +89,11 @@
 		{
 			"ImportPath": "github.com/rakyll/goini",
 			"Rev": "907cca0f578a5316fb864ec6992dc3d9730ec58c"
+		},
+		{
+			"ImportPath": "github.com/rancherio/go-machine-service/locks",
+			"Comment": "v0.1.0",
+			"Rev": "e20676a7fc92b12ca2af1901d16d6e8d6aaea6d2"
 		}
 	]
 }

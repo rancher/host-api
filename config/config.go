@@ -23,6 +23,7 @@ type config struct {
 	Ip              string
 	ParsedPublicKey interface{}
 	HostUuidCheck   bool
+	EventsPoolSize  int
 }
 
 var Config config
@@ -55,6 +56,7 @@ func Parse() error {
 	flag.StringVar(&Config.HostUuid, "host-uuid", "", "Host UUID")
 	flag.BoolVar(&Config.HostUuidCheck, "host-uuid-check", true, "Validate host UUID")
 	flag.StringVar(&Config.Key, "public-key", "", "Public Key for Authentication")
+	flag.IntVar(&Config.EventsPoolSize, "events-pool-size", 10, "Size of worker pool for processing docker events.")
 
 	confOptions := &globalconf.Options{
 		EnvPrefix: "HOST_API_",

@@ -12,7 +12,7 @@ func TestEventListener(t *testing.T) {
 
 func newDockerClient() (*docker.Client, error) {
 	useDockerConnectEnvVars := os.Getenv("CATTLE_DOCKER_USE_BOOT2DOCKER") == "true"
-	return DockerClient(useDockerConnectEnvVars)
+	return NewDockerClient(useDockerConnectEnvVars)
 }
 
 func TestDockerClient(t *testing.T) {

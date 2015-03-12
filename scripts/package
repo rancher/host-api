@@ -4,6 +4,8 @@ cd $(dirname $0)/..
 
 CONTENT=$(uuidgen)
 
+cp scripts/lib/net-util.sh bin
+
 rm -rf dist/artifacts
 
 mkdir -p build/${CONTENT}
