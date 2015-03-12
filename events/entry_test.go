@@ -27,8 +27,8 @@ func TestProcessDockerEvents(t *testing.T) {
 	handler := &testHandler{
 		handlerFunc: hFn,
 	}
-	getHandlers = func(dockerClient *docker.Client) map[string]Handler {
-		return map[string]Handler{"start": handler}
+	getHandlers = func(dockerClient *docker.Client) (map[string]Handler, error) {
+		return map[string]Handler{"start": handler}, nil
 	}
 
 	// Create pre-existing containers before starting event listener

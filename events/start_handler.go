@@ -12,11 +12,7 @@ import (
 const RancherIPKey = "RANCHER_IP="
 
 type StartHandler struct {
-	Client StartHandlerDockerClient
-}
-
-type StartHandlerDockerClient interface {
-	InspectContainer(id string) (*docker.Container, error)
+	Client SimpleDockerClient
 }
 
 func (h *StartHandler) Handle(event *docker.APIEvents) error {
