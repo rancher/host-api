@@ -5,3 +5,5 @@ gopath
 
 *.swp
 build/
+.idea
+*.iml
