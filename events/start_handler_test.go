@@ -5,7 +5,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/rancherio/go-machine-service/locks"
 	"io"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -163,23 +162,4 @@ func assertHasIp(injectedIp string, c *docker.Container, dockerClient *docker.Cl
 	}
 
 	return foundIp, nil
-}
-
-func prep(t *testing.T) *docker.Client {
-	useEnvVars := useEnvVars()
-	dockerClient, err := NewDockerClient(useEnvVars)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if useEnvVars {
-		buildCommand = func(pid string, ip string) *exec.Cmd {
-			// Assumes boot2docker. Also assumes that:
-			// - nsenter and net-utils.sh are on the path in the b2d vm
-			// - This link exists: ln -s /proc/ /host/proc
-			return exec.Command("boot2docker", "ssh", "-t", "sudo", "net-util.sh", "-p", pid, "-i", ip)
-		}
-	}
-
-	return dockerClient
 }

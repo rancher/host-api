@@ -2,6 +2,7 @@ package events
 
 import (
 	"github.com/fsouza/go-dockerclient"
+	rclient "github.com/rancherio/go-rancher/client"
 	"testing"
 	"time"
 )
@@ -27,6 +28,10 @@ func TestProcessDockerEvents(t *testing.T) {
 	handler := &testHandler{
 		handlerFunc: hFn,
 	}
+
+	// Mock the getHandlers function, then put it back at the end of the test.
+	origGetHandlers := getHandlers
+	defer func() { getHandlers = origGetHandlers }()
 	getHandlers = func(dockerClient *docker.Client) (map[string]Handler, error) {
 		return map[string]Handler{"start": handler}, nil
 	}
@@ -72,4 +77,33 @@ func TestProcessDockerEvents(t *testing.T) {
 			t.Fatalf("Never received event for preexisting container [%v]", preexistRunning.ID)
 		}
 	}
+}
+
+func TestGetHandlers(t *testing.T) {
+	dockerClient := prep(t)
+	handlers, err := getHandlers(dockerClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Cattle API config params not set, so CreateHandler shouldn't get configured
+	if len(handlers) != 1 {
+		t.Fatalf("Expected 1 configured hanlder: %v", handlers)
+	}
+
+	// Mock rancherClient, put it back at the end
+	origRancherClient := rancherClient
+	defer func() { rancherClient = origRancherClient }()
+	rancherClient = func() (*rclient.RancherClient, error) {
+		return &rclient.RancherClient{}, nil
+	}
+
+	// RancherClient can be initialized, so CreateHandler should be configured
+	handlers, err = getHandlers(dockerClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(handlers) != 2 {
+		t.Fatalf("Expected 2 configured hanlders: %v, %#v", len(handlers), handlers)
+	}
+
 }

@@ -47,28 +47,43 @@ var getDockerClient = func() (*docker.Client, error) {
 }
 
 var getHandlers = func(dockerClient *docker.Client) (map[string]Handler, error) {
+
+	handlers := map[string]Handler{}
+
+	// Start Handler
+	startHandler := &StartHandler{
+		Client: dockerClient,
+	}
+	handlers["start"] = startHandler
+
+	// Create Handler
 	rancherClient, err := rancherClient()
 	if err != nil {
 		return nil, err
 	}
-	createHandler := &CreateHandler{
-		client:   dockerClient,
-		rancher:  rancherClient,
-		hostUuid: getHostUuid(),
-	}
 
-	startHandler := &StartHandler{
-		Client: dockerClient,
+	if rancherClient != nil {
+		createHandler := &CreateHandler{
+			client:   dockerClient,
+			rancher:  rancherClient,
+			hostUuid: getHostUuid(),
+		}
+
+		handlers["create"] = createHandler
 	}
-	handlers := map[string]Handler{"start": startHandler, "create": createHandler}
 
 	return handlers, nil
 }
 
-func rancherClient() (*rclient.RancherClient, error) {
+var rancherClient = func() (*rclient.RancherClient, error) {
 	apiUrl := config.Config.CattleUrl
 	accessKey := config.Config.CattleAccessKey
 	secretKey := config.Config.CattleSecretKey
+
+	if apiUrl == "" || accessKey == "" || secretKey == "" {
+		return nil, nil
+	}
+
 	apiClient, err := rclient.NewRancherClient(&rclient.ClientOpts{
 		Url:       apiUrl,
 		AccessKey: accessKey,
