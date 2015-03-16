@@ -81,7 +81,7 @@ func (w *worker) doWork(event *docker.APIEvents, e *EventRouter) {
 	if handler, ok := e.handlers[event.Status]; ok {
 		log.Infof("Processing event: %#v", event)
 		if err := handler.Handle(event); err != nil {
-			log.Errorf("Error processing event %#v", event)
+			log.Errorf("Error processing event %#v. Error: %v", event, err)
 		}
 	}
 }
