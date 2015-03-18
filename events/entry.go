@@ -22,7 +22,7 @@ func ProcessDockerEvents(poolSize int) error {
 		return err
 	}
 	router.Start()
-	go watchRancherState(router.listener)
+	watchRancherState(router.listener)
 
 	listOpts := docker.ListContainersOptions{
 		All:     true,
