@@ -1,10 +1,14 @@
 package events
 
 import (
+	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/rancherio/go-machine-service/locks"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -19,7 +23,7 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	// Note: event.ID == container's ID
 	lock := locks.Lock("start." + event.ID)
 	if lock == nil {
-		log.Warnf("Container locked. Can't run StartHandler. ID: [%s]", event.ID)
+		log.Infof("Container locked. Can't run StartHandler. ID: [%s]", event.ID)
 		return nil
 	}
 	defer lock.Unlock()
@@ -66,6 +70,31 @@ func (h *StartHandler) getRancherIP(c *docker.Container) string {
 			return strings.TrimPrefix(env, RancherIPKey)
 		}
 	}
+
+	filePath := path.Join(getContainerStateDir(), c.ID)
+	if _, err := os.Stat(filePath); err == nil {
+		file, e := ioutil.ReadFile(filePath)
+		if e != nil {
+			log.Errorf("Error reading file for container %s: %v", c.ID, e)
+		}
+		var instanceData instance
+		json.Unmarshal(file, &instanceData)
+
+		if len(instanceData.Nics) > 0 {
+			nic := instanceData.Nics[0]
+			var ipData ipAddress
+			for _, i := range nic.IpAddresses {
+				if i.Role == "primary" {
+					ipData = i
+					break
+				}
+			}
+			if ipData.Address != "" {
+				return ipData.Address + "/" + strconv.Itoa(ipData.Subnet.CidrSize)
+			}
+		}
+	}
+
 	return ""
 }
 

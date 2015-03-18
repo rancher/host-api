@@ -22,6 +22,7 @@ func ProcessDockerEvents(poolSize int) error {
 		return err
 	}
 	router.Start()
+	go watchRancherState(router.listener)
 
 	listOpts := docker.ListContainersOptions{
 		All:     true,
@@ -97,4 +98,8 @@ var rancherClient = func() (*rclient.RancherClient, error) {
 
 func getHostUuid() string {
 	return config.Config.HostUuid
+}
+
+func getContainerStateDir() string {
+	return config.Config.CattleStateDir
 }
