@@ -99,7 +99,7 @@ func spinupContainers(createCount int, dockerClient *docker.Client, t *testing.T
 	for i := 0; i < createCount; i++ {
 		c, err := createContainer(dockerClient)
 		if err != nil {
-			t.Fatalf("Failure", err)
+			t.Fatalf("Failure: %v", err)
 		}
 
 		removeOpts := docker.RemoveContainerOptions{ID: c.ID}

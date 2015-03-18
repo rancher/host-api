@@ -6,22 +6,46 @@ import (
 	"github.com/rancherio/host-api/config"
 )
 
-func ProcessDockerEvents(poolSize int) error {
-	dockerClient, err := getDockerClient()
+func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
+	return &DockerEventsProcessor{
+		poolSize:         poolSize,
+		getDockerClient:  getDockerClientFn,
+		getHandlers:      getHandlersFn,
+		getRancherClient: getRancherClientFn,
+	}
+}
+
+type DockerEventsProcessor struct {
+	poolSize         int
+	getDockerClient  func() (*docker.Client, error)
+	getHandlers      func(*docker.Client, *rclient.RancherClient) (map[string]Handler, error)
+	getRancherClient func() (*rclient.RancherClient, error)
+}
+
+func (de *DockerEventsProcessor) Process() error {
+	dockerClient, err := de.getDockerClient()
 	if err != nil {
 		return err
 	}
 
-	handlers, err := getHandlers(dockerClient)
+	rancherClient, err := de.getRancherClient()
 	if err != nil {
 		return err
 	}
 
-	router, err := NewEventRouter(poolSize, poolSize, dockerClient, handlers)
+	handlers, err := de.getHandlers(dockerClient, rancherClient)
+	if err != nil {
+		return err
+	}
+
+	router, err := NewEventRouter(de.poolSize, de.poolSize, dockerClient, handlers)
 	if err != nil {
 		return err
 	}
 	router.Start()
+
+	rancherStateWatcher := newRancherStateWatcher(router.listener, getContainerStateDir())
+	go rancherStateWatcher.watch()
 
 	listOpts := docker.ListContainersOptions{
 		All:     true,
@@ -42,11 +66,11 @@ func ProcessDockerEvents(poolSize int) error {
 	return nil
 }
 
-var getDockerClient = func() (*docker.Client, error) {
+func getDockerClientFn() (*docker.Client, error) {
 	return NewDockerClient(false)
 }
 
-var getHandlers = func(dockerClient *docker.Client) (map[string]Handler, error) {
+func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherClient) (map[string]Handler, error) {
 
 	handlers := map[string]Handler{}
 
@@ -57,25 +81,19 @@ var getHandlers = func(dockerClient *docker.Client) (map[string]Handler, error) 
 	handlers["start"] = startHandler
 
 	// Create Handler
-	rancherClient, err := rancherClient()
-	if err != nil {
-		return nil, err
-	}
-
 	if rancherClient != nil {
 		createHandler := &CreateHandler{
 			client:   dockerClient,
 			rancher:  rancherClient,
 			hostUuid: getHostUuid(),
 		}
-
 		handlers["create"] = createHandler
 	}
 
 	return handlers, nil
 }
 
-var rancherClient = func() (*rclient.RancherClient, error) {
+func getRancherClientFn() (*rclient.RancherClient, error) {
 	apiUrl := config.Config.CattleUrl
 	accessKey := config.Config.CattleAccessKey
 	secretKey := config.Config.CattleSecretKey
@@ -97,4 +115,8 @@ var rancherClient = func() (*rclient.RancherClient, error) {
 
 func getHostUuid() string {
 	return config.Config.HostUuid
+}
+
+func getContainerStateDir() string {
+	return config.Config.CattleStateDir
 }

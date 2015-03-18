@@ -8,18 +8,19 @@ import (
 )
 
 func TestProcessDockerEvents(t *testing.T) {
+	processor := NewDockerEventsProcessor(10)
 
-	// Injecting test docker client
+	// Test-friendly docker client
 	useEnvVars := useEnvVars()
 	dockerClient, err := NewDockerClient(useEnvVars)
 	if err != nil {
 		t.Fatal(err)
 	}
-	getDockerClient = func() (*docker.Client, error) {
+	processor.getDockerClient = func() (*docker.Client, error) {
 		return dockerClient, nil
 	}
 
-	// Injecting test handler
+	// Mock Handler
 	handledEvents := make(chan *docker.APIEvents, 10)
 	hFn := func(event *docker.APIEvents) error {
 		handledEvents <- event
@@ -28,18 +29,16 @@ func TestProcessDockerEvents(t *testing.T) {
 	handler := &testHandler{
 		handlerFunc: hFn,
 	}
-
-	// Mock the getHandlers function, then put it back at the end of the test.
-	origGetHandlers := getHandlers
-	defer func() { getHandlers = origGetHandlers }()
-	getHandlers = func(dockerClient *docker.Client) (map[string]Handler, error) {
+	processor.getHandlers = func(dockerClient *docker.Client,
+		rancherClient *rclient.RancherClient) (map[string]Handler, error) {
 		return map[string]Handler{"start": handler}, nil
 	}
 
 	// Create pre-existing containers before starting event listener
 	preexistRunning, _ := createNetTestContainer(dockerClient, "10.1.2.3")
 	defer func() {
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: preexistRunning.ID, Force: true, RemoveVolumes: true}); err != nil {
+		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: preexistRunning.ID, Force: true,
+			RemoveVolumes: true}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -49,7 +48,8 @@ func TestProcessDockerEvents(t *testing.T) {
 	preexistPaused, _ := createNetTestContainer(dockerClient, "10.1.2.3")
 	defer func() {
 		dockerClient.UnpauseContainer(preexistPaused.ID)
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: preexistPaused.ID, Force: true, RemoveVolumes: true}); err != nil {
+		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: preexistPaused.ID, Force: true,
+			RemoveVolumes: true}); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -58,7 +58,7 @@ func TestProcessDockerEvents(t *testing.T) {
 	}
 	dockerClient.PauseContainer(preexistPaused.ID)
 
-	if err := ProcessDockerEvents(10); err != nil {
+	if err := processor.Process(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -81,7 +81,7 @@ func TestProcessDockerEvents(t *testing.T) {
 
 func TestGetHandlers(t *testing.T) {
 	dockerClient := prep(t)
-	handlers, err := getHandlers(dockerClient)
+	handlers, err := getHandlersFn(dockerClient, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,20 +90,12 @@ func TestGetHandlers(t *testing.T) {
 		t.Fatalf("Expected 1 configured hanlder: %v", handlers)
 	}
 
-	// Mock rancherClient, put it back at the end
-	origRancherClient := rancherClient
-	defer func() { rancherClient = origRancherClient }()
-	rancherClient = func() (*rclient.RancherClient, error) {
-		return &rclient.RancherClient{}, nil
-	}
-
-	// RancherClient can be initialized, so CreateHandler should be configured
-	handlers, err = getHandlers(dockerClient)
+	// RancherClient is not nil, so CreateHandler should be configured
+	handlers, err = getHandlersFn(dockerClient, &rclient.RancherClient{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(handlers) != 2 {
 		t.Fatalf("Expected 2 configured hanlders: %v, %#v", len(handlers), handlers)
 	}
-
 }

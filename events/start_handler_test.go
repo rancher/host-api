@@ -14,7 +14,10 @@ func TestStartHandlerHappyPath(t *testing.T) {
 	dockerClient := prep(t)
 
 	injectedIp := "10.1.2.3"
-	c, _ := createNetTestContainer(dockerClient, injectedIp)
+	c, err := createNetTestContainer(dockerClient, injectedIp)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
 
 	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
