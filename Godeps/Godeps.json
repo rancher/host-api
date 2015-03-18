@@ -57,6 +57,11 @@
 			"Rev": "59b423db81e5894ca7460652f1b206fc72d85750"
 		},
 		{
+			"ImportPath": "github.com/go-fsnotify/fsnotify",
+			"Comment": "v1.2.0",
+			"Rev": "96c060f6a6b7e0d6f75fddd10efeaca3e5d1bcb0"
+		},
+		{
 			"ImportPath": "github.com/golang/glog",
 			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
 		},
