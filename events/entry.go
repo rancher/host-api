@@ -2,20 +2,50 @@ package events
 
 import (
 	"github.com/fsouza/go-dockerclient"
+	rclient "github.com/rancherio/go-rancher/client"
+	"github.com/rancherio/host-api/config"
 )
 
-func ProcessDockerEvents(poolSize int) error {
-	dockerClient, err := getDockerClient()
+func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
+	return &DockerEventsProcessor{
+		poolSize:         poolSize,
+		getDockerClient:  getDockerClientFn,
+		getHandlers:      getHandlersFn,
+		getRancherClient: getRancherClientFn,
+	}
+}
+
+type DockerEventsProcessor struct {
+	poolSize         int
+	getDockerClient  func() (*docker.Client, error)
+	getHandlers      func(*docker.Client, *rclient.RancherClient) (map[string]Handler, error)
+	getRancherClient func() (*rclient.RancherClient, error)
+}
+
+func (de *DockerEventsProcessor) Process() error {
+	dockerClient, err := de.getDockerClient()
 	if err != nil {
 		return err
 	}
 
-	handlers := getHandlers(dockerClient)
-	router, err := NewEventRouter(poolSize, poolSize, dockerClient, handlers)
+	rancherClient, err := de.getRancherClient()
+	if err != nil {
+		return err
+	}
+
+	handlers, err := de.getHandlers(dockerClient, rancherClient)
+	if err != nil {
+		return err
+	}
+
+	router, err := NewEventRouter(de.poolSize, de.poolSize, dockerClient, handlers)
 	if err != nil {
 		return err
 	}
 	router.Start()
+
+	rancherStateWatcher := newRancherStateWatcher(router.listener, getContainerStateDir())
+	go rancherStateWatcher.watch()
 
 	listOpts := docker.ListContainersOptions{
 		All:     true,
@@ -36,15 +66,57 @@ func ProcessDockerEvents(poolSize int) error {
 	return nil
 }
 
-var getDockerClient = func() (*docker.Client, error) {
+func getDockerClientFn() (*docker.Client, error) {
 	return NewDockerClient(false)
 }
 
-var getHandlers = func(dockerClient *docker.Client) map[string]Handler {
-	handler := &StartHandler{
+func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherClient) (map[string]Handler, error) {
+
+	handlers := map[string]Handler{}
+
+	// Start Handler
+	startHandler := &StartHandler{
 		Client: dockerClient,
 	}
-	handlers := map[string]Handler{"start": handler}
+	handlers["start"] = startHandler
 
-	return handlers
+	// Create Handler
+	if rancherClient != nil {
+		createHandler := &CreateHandler{
+			client:   dockerClient,
+			rancher:  rancherClient,
+			hostUuid: getHostUuid(),
+		}
+		handlers["create"] = createHandler
+	}
+
+	return handlers, nil
+}
+
+func getRancherClientFn() (*rclient.RancherClient, error) {
+	apiUrl := config.Config.CattleUrl
+	accessKey := config.Config.CattleAccessKey
+	secretKey := config.Config.CattleSecretKey
+
+	if apiUrl == "" || accessKey == "" || secretKey == "" {
+		return nil, nil
+	}
+
+	apiClient, err := rclient.NewRancherClient(&rclient.ClientOpts{
+		Url:       apiUrl,
+		AccessKey: accessKey,
+		SecretKey: secretKey,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return apiClient, nil
+}
+
+func getHostUuid() string {
+	return config.Config.HostUuid
+}
+
+func getContainerStateDir() string {
+	return config.Config.CattleStateDir
 }

@@ -28,7 +28,8 @@ func main() {
 	flag.Parse()
 	defer glog.Flush()
 
-	err = events.ProcessDockerEvents(config.Config.EventsPoolSize)
+	processor := events.NewDockerEventsProcessor(config.Config.EventsPoolSize)
+	err = processor.Process()
 	if err != nil {
 		glog.Error(err)
 		os.Exit(1)

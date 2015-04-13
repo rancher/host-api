@@ -24,6 +24,10 @@ type config struct {
 	ParsedPublicKey interface{}
 	HostUuidCheck   bool
 	EventsPoolSize  int
+	CattleUrl       string
+	CattleAccessKey string
+	CattleSecretKey string
+	CattleStateDir  string
 }
 
 var Config config
@@ -57,6 +61,10 @@ func Parse() error {
 	flag.BoolVar(&Config.HostUuidCheck, "host-uuid-check", true, "Validate host UUID")
 	flag.StringVar(&Config.Key, "public-key", "", "Public Key for Authentication")
 	flag.IntVar(&Config.EventsPoolSize, "events-pool-size", 10, "Size of worker pool for processing docker events.")
+	flag.StringVar(&Config.CattleUrl, "cattle-url", "", "URL for accessing cattle api")
+	flag.StringVar(&Config.CattleAccessKey, "cattle-access-key", "", "Access key for cattle api")
+	flag.StringVar(&Config.CattleSecretKey, "cattle-secret-key", "", "Secret key for cattle api")
+	flag.StringVar(&Config.CattleStateDir, "cattle-state-dir", "", "Directory where Rancher state is persisted.")
 
 	confOptions := &globalconf.Options{
 		EnvPrefix: "HOST_API_",
