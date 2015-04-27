@@ -104,6 +104,9 @@ func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, hea
 
 				if wasntHealthCheck && event.Op == fsnotify.Create && event.Name != watchDir {
 					id := path.Base(event.Name)
+					if strings.HasPrefix(id, "tmp-") {
+						break
+					}
 					dockerEvent := &docker.APIEvents{
 						ID:     id,
 						Status: "start",

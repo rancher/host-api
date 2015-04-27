@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/rancherio/go-machine-service/locks"
@@ -16,7 +17,8 @@ import (
 const RancherIPKey = "RANCHER_IP="
 
 type StartHandler struct {
-	Client SimpleDockerClient
+	Client            SimpleDockerClient
+	ContainerStateDir string
 }
 
 func (h *StartHandler) Handle(event *docker.APIEvents) error {
@@ -33,7 +35,10 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 		return err
 	}
 
-	rancherIP := h.getRancherIP(c)
+	rancherIP, err := h.getRancherIP(c)
+	if err != nil {
+		return err
+	}
 	if rancherIP == "" {
 		return nil
 	}
@@ -64,21 +69,24 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	return nil
 }
 
-func (h *StartHandler) getRancherIP(c *docker.Container) string {
+func (h *StartHandler) getRancherIP(c *docker.Container) (string, error) {
 	for _, env := range c.Config.Env {
 		if strings.HasPrefix(env, RancherIPKey) {
-			return strings.TrimPrefix(env, RancherIPKey)
+			return strings.TrimPrefix(env, RancherIPKey), nil
 		}
 	}
 
-	filePath := path.Join(getContainerStateDir(), c.ID)
+	filePath := path.Join(h.ContainerStateDir, c.ID)
 	if _, err := os.Stat(filePath); err == nil {
 		file, e := ioutil.ReadFile(filePath)
 		if e != nil {
-			log.Errorf("Error reading file for container %s: %v", c.ID, e)
+			return "", fmt.Errorf("Error reading file for container %s: %v", c.ID, e)
 		}
 		var instanceData instance
-		json.Unmarshal(file, &instanceData)
+		jerr := json.Unmarshal(file, &instanceData)
+		if jerr != nil {
+			return "", fmt.Errorf("Error unmarshalling json for container %s: %v", c.ID, jerr)
+		}
 
 		if len(instanceData.Nics) > 0 {
 			nic := instanceData.Nics[0]
@@ -90,12 +98,12 @@ func (h *StartHandler) getRancherIP(c *docker.Container) string {
 				}
 			}
 			if ipData.Address != "" {
-				return ipData.Address + "/" + strconv.Itoa(ipData.Subnet.CidrSize)
+				return ipData.Address + "/" + strconv.Itoa(ipData.Subnet.CidrSize), nil
 			}
 		}
 	}
 
-	return ""
+	return "", nil
 }
 
 func configureIP(pid string, ip string) error {
@@ -126,7 +134,6 @@ type ipAddress struct {
 
 type nic struct {
 	IpAddresses []ipAddress `json:"ipAddresses"`
-	Id          string
 }
 
 type instance struct {

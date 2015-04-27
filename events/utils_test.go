@@ -17,7 +17,10 @@ func createContainer(client *docker.Client) (*docker.Container, error) {
 }
 
 func createNetTestContainer(client *docker.Client, ip string) (*docker.Container, error) {
-	env := []string{"RANCHER_IP=" + ip}
+	env := []string{}
+	if ip != "" {
+		env = append(env, "RANCHER_IP="+ip)
+	}
 	config := &docker.Config{
 		Image:     "busybox:latest",
 		Env:       env,
