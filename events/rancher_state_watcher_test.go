@@ -151,16 +151,22 @@ func initWatcher(t *testing.T, postInit func(*rancherStateWatcher)) chan *docker
 }
 
 func makeTestEventFile(t *testing.T) string {
-	fileName := randomString()
-	filePath := path.Join(watchTestDir, fileName)
+	id := randomString()
 	currentDir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(path.Join(currentDir, filePath), []byte(""), 0644); err != nil {
+	filePath := path.Join(currentDir, watchTestDir, id)
+	tmpFilePath := path.Join(currentDir, watchTestDir, "tmp-"+id)
+	if err := ioutil.WriteFile(tmpFilePath, []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
-	return fileName
+	// We write to a temp file and then move to mimic how the file is written in production.
+	// This is done to achieve an atomic write operation.
+	if err := os.Rename(tmpFilePath, filePath); err != nil {
+		t.Fatal(err)
+	}
+	return id
 }
 
 func mkTestDir(t *testing.T) {

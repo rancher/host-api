@@ -2,13 +2,20 @@ package events
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/rancherio/go-machine-service/locks"
 	"io"
+	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
 )
+
+var containerJsonTemplate = `{"nics": [{"ipAddresses": [{"address": "%s", 
+		"role": "primary", "subnet": {"cidrSize": 16}}]}]}`
 
 func TestStartHandlerHappyPath(t *testing.T) {
 	dockerClient := prep(t)
@@ -110,6 +117,81 @@ func TestLocking(t *testing.T) {
 		// Unlocked, should return error
 		t.Fatal(err)
 	}
+}
+
+func TestIpFromFile(t *testing.T) {
+	purgeDir(t)
+	mkTestDir(t)
+	dockerClient := prep(t)
+
+	injectedIp := "10.1.2.3"
+	c, err := createNetTestContainer(dockerClient, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+
+	stateDir := makeContainerFile(t, c.ID, fmt.Sprintf(containerJsonTemplate, injectedIp))
+
+	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := &StartHandler{Client: dockerClient,
+		ContainerStateDir: stateDir}
+	event := &docker.APIEvents{ID: c.ID}
+
+	if err := handler.Handle(event); err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err := assertHasIp(injectedIp, c, dockerClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("Ip wasn't injected.")
+	}
+}
+
+func TestIpFromFileFailure(t *testing.T) {
+	purgeDir(t)
+	mkTestDir(t)
+	dockerClient := prep(t)
+
+	c, err := createNetTestContainer(dockerClient, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+
+	stateDir := makeContainerFile(t, c.ID, `{"nics": [{"ipAddresses": [{`)
+
+	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := &StartHandler{Client: dockerClient,
+		ContainerStateDir: stateDir}
+	event := &docker.APIEvents{ID: c.ID}
+
+	if err := handler.Handle(event); err == nil {
+		t.Fatal("Expected to get json unmarshalling error.")
+	}
+}
+
+func makeContainerFile(t *testing.T, id string, containerJson string) string {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stateDir := path.Join(currentDir, watchTestDir)
+	filePath := path.Join(stateDir, id)
+	json := []byte(containerJson)
+	if err := ioutil.WriteFile(filePath, json, 0644); err != nil {
+		t.Fatal(err)
+	}
+	return stateDir
 }
 
 func assertHasIp(injectedIp string, c *docker.Container, dockerClient *docker.Client) (bool, error) {
