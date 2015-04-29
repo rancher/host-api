@@ -15,7 +15,8 @@ import (
 const watchTestDir = "watch-test"
 
 func TestNoWatchDir(t *testing.T) {
-	err := watchInternalFn(make(chan *docker.APIEvents, 1), "", time.Millisecond*1, time.Millisecond*1, newWatcherFn)
+	err := watchInternalFn(make(chan *docker.APIEvents, 1), "", time.Millisecond*1, time.Millisecond*1,
+		newWatcherFn, make(chan bool, 1))
 	if err != nil {
 		t.FailNow()
 	}
@@ -24,7 +25,8 @@ func TestNoWatchDir(t *testing.T) {
 func TestWatchDirHappyPath(t *testing.T) {
 	purgeDir(t)
 	mkTestDir(t)
-	eventChan := initWatcher(t, nil)
+	eventChan, stopChan := initWatcher(t, nil)
+	defer close(stopChan)
 	fileName := makeTestEventFile(t)
 	assertEvent(fileName, eventChan, t)
 }
@@ -32,7 +34,8 @@ func TestWatchDirHappyPath(t *testing.T) {
 func TestDirectoryDoesntExist(t *testing.T) {
 	// Note that we're starting the watcher without creating the directory.
 	purgeDir(t)
-	eventChan := initWatcher(t, nil)
+	eventChan, stopChan := initWatcher(t, nil)
+	defer close(stopChan)
 	fileName := makeTestEventFile(t)
 	assertEvent(fileName, eventChan, t)
 }
@@ -50,11 +53,12 @@ func TestDirectoryGetsDeleted(t *testing.T) {
 		watcher.healthCheckTimeout = healthCheckTimeout
 		watcher.healthCheckWriteInterval = healthCheckWriteInterval
 	}
-	eventChan := initWatcher(t, postInit)
+	eventChan, stopChan := initWatcher(t, postInit)
+	defer close(stopChan)
 	purgeDir(t)
 
 	// give the health check enough time to discover the problem
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 250)
 	fileName := makeTestEventFile(t)
 	assertEvent(fileName, eventChan, t)
 }
@@ -64,19 +68,23 @@ func TestDirAndFilesAlreadyExists(t *testing.T) {
 	purgeDir(t)
 	mkTestDir(t)
 	makeTestEventFile(t)
-	eventChan := initWatcher(t, nil)
+	eventChan, stopChan := initWatcher(t, nil)
+	defer close(stopChan)
 	fileName := makeTestEventFile(t)
 	assertEvent(fileName, eventChan, t)
 }
 
 func TestRestartLogic(t *testing.T) {
 	eventChan := make(chan *docker.APIEvents, 10)
-	watcher := newRancherStateWatcher(eventChan, watchTestDir)
+	stopChan := make(chan bool, 1)
+	defer close(stopChan)
+	watcher := newRancherStateWatcher(eventChan, watchTestDir, stopChan)
 	watcher.restartWaitUnit = time.Millisecond
 	watcher.maxRestarts = 5
 	restartCount := 0
+
 	var mockWatchInternal = func(eventChannel chan<- *docker.APIEvents, watchDir string, interval,
-		timeout time.Duration, newWatcherFn newWatcherFnDef) error {
+		timeout time.Duration, newWatcherFn newWatcherFnDef, stopChannel <-chan bool) error {
 		restartCount++
 		return fmt.Errorf("Test error %v", restartCount)
 	}
@@ -117,8 +125,10 @@ func TestFSNotifyErrorChannel(t *testing.T) {
 	errors <- fmt.Errorf("Fake error")
 
 	eventChan := make(chan *docker.APIEvents, 10)
+	stopChan := make(chan bool, 1)
+	defer close(stopChan)
 	if err := watchInternalFn(eventChan, watchTestDir, time.Millisecond*1,
-		time.Millisecond*1, mockNewWatcher); err == nil {
+		time.Millisecond*1, mockNewWatcher, stopChan); err == nil {
 		t.Fatalf("Expected to get an error.")
 	}
 }
@@ -135,9 +145,10 @@ func assertEvent(fileName string, eventChan chan *docker.APIEvents, t *testing.T
 	}
 }
 
-func initWatcher(t *testing.T, postInit func(*rancherStateWatcher)) chan *docker.APIEvents {
+func initWatcher(t *testing.T, postInit func(*rancherStateWatcher)) (chan *docker.APIEvents, chan bool) {
 	eventChan := make(chan *docker.APIEvents, 10)
-	watcher := newRancherStateWatcher(eventChan, watchTestDir)
+	stopChan := make(chan bool, 1)
+	watcher := newRancherStateWatcher(eventChan, watchTestDir, stopChan)
 
 	if postInit != nil {
 		postInit(watcher)
@@ -147,7 +158,7 @@ func initWatcher(t *testing.T, postInit func(*rancherStateWatcher)) chan *docker
 	// This sleep is a cheat to let the watch initialize. If tests ever fail because of it,
 	// will need to rework into a "ready" channel
 	time.Sleep(time.Millisecond * 10)
-	return eventChan
+	return eventChan, stopChan
 }
 
 func makeTestEventFile(t *testing.T) string {

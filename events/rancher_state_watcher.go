@@ -23,10 +23,11 @@ type rancherStateWatcher struct {
 	maxRestarts              int
 	watchDir                 string
 	eventChannel             chan<- *docker.APIEvents
-	watchInternal            func(chan<- *docker.APIEvents, string, time.Duration, time.Duration, newWatcherFnDef) error
+	watchInternal            func(chan<- *docker.APIEvents, string, time.Duration, time.Duration, newWatcherFnDef, <-chan bool) error
+	stopChannel              <-chan bool
 }
 
-func newRancherStateWatcher(eventChannel chan<- *docker.APIEvents, watchDir string) *rancherStateWatcher {
+func newRancherStateWatcher(eventChannel chan<- *docker.APIEvents, watchDir string, stopChannel <-chan bool) *rancherStateWatcher {
 	return &rancherStateWatcher{
 		healthCheckTimeout:       time.Second * 10,
 		healthCheckWriteInterval: time.Second * 8,
@@ -35,6 +36,7 @@ func newRancherStateWatcher(eventChannel chan<- *docker.APIEvents, watchDir stri
 		watchDir:                 watchDir,
 		eventChannel:             eventChannel,
 		watchInternal:            watchInternalFn,
+		stopChannel:              stopChannel,
 	}
 }
 
@@ -51,7 +53,7 @@ func (w *rancherStateWatcher) watch() {
 			panic("Unable to successfully start rancher state watcher.")
 		}
 		if err := w.watchInternal(w.eventChannel, w.watchDir, w.healthCheckWriteInterval, w.healthCheckTimeout,
-			newWatcherFn); err != nil {
+			newWatcherFn, w.stopChannel); err != nil {
 			log.Warnf("Rancher state watcher returned with error. Waiting %v and then restarting. "+
 				"Error that caused exit: %v", restartWait, err)
 			time.Sleep(w.restartWaitUnit * time.Duration(restartWait))
@@ -69,7 +71,7 @@ func (w *rancherStateWatcher) watch() {
 }
 
 func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, healthCheckWriteInterval time.Duration,
-	healthCheckTimeout time.Duration, newWatcher newWatcherFnDef) error {
+	healthCheckTimeout time.Duration, newWatcher newWatcherFnDef, stopChannel <-chan bool) error {
 	if watchDir == "" {
 		// For backwards compatability, this shouldn't raise an error. Just log and return
 		log.Info("Container state dir not configured. Returning without error.")
@@ -125,7 +127,9 @@ func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, hea
 		return fmt.Errorf("Error adding watcher for dir %v: %v", watchDir, err)
 	}
 
-	err = initHealthCheck(watchDir, healthCheckWriteInterval)
+	stopHealthCheckWrite := make(chan bool, 1)
+	defer close(stopHealthCheckWrite)
+	err = initHealthCheck(watchDir, healthCheckWriteInterval, stopHealthCheckWrite)
 	if err != nil {
 		return err
 	}
@@ -137,6 +141,8 @@ func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, hea
 		return fmt.Errorf("Failed health check.")
 	case watchErr := <-watchErrorChannel:
 		return watchErr
+	case <-stopChannel:
+		return nil
 	}
 }
 
@@ -151,7 +157,7 @@ func writeHealthCheckFile(fileName string) error {
 	return nil
 }
 
-func initHealthCheck(watchDir string, writeInterval time.Duration) error {
+func initHealthCheck(watchDir string, writeInterval time.Duration, stop <-chan bool) error {
 	healthCheckFile := path.Join(watchDir, healthCheckFileName)
 
 	if err := writeHealthCheckFile(healthCheckFile); err != nil {
@@ -160,10 +166,15 @@ func initHealthCheck(watchDir string, writeInterval time.Duration) error {
 
 	go func() {
 		ticker := time.NewTicker(writeInterval)
+		defer ticker.Stop()
 		for {
-			<-ticker.C
-			if err := writeHealthCheckFile(healthCheckFile); err != nil {
-				log.Warnf("Unable to write healthcheck file: %v", err)
+			select {
+			case <-ticker.C:
+				if err := writeHealthCheckFile(healthCheckFile); err != nil {
+					log.Warnf("Unable to write healthcheck file: %v", err)
+				}
+			case <-stop:
+				return
 			}
 		}
 	}()

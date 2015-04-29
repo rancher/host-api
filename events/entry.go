@@ -44,7 +44,7 @@ func (de *DockerEventsProcessor) Process() error {
 	}
 	router.Start()
 
-	rancherStateWatcher := newRancherStateWatcher(router.listener, getContainerStateDir())
+	rancherStateWatcher := newRancherStateWatcher(router.listener, getContainerStateDir(), nil)
 	go rancherStateWatcher.watch()
 
 	listOpts := docker.ListContainersOptions{
