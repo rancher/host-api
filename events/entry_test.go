@@ -30,8 +30,8 @@ func TestProcessDockerEvents(t *testing.T) {
 		handlerFunc: hFn,
 	}
 	processor.getHandlers = func(dockerClient *docker.Client,
-		rancherClient *rclient.RancherClient) (map[string]Handler, error) {
-		return map[string]Handler{"start": handler}, nil
+		rancherClient *rclient.RancherClient) (map[string][]Handler, error) {
+		return map[string][]Handler{"start": []Handler{handler}}, nil
 	}
 
 	// Create pre-existing containers before starting event listener
@@ -85,17 +85,17 @@ func TestGetHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Cattle API config params not set, so CreateHandler shouldn't get configured
-	if len(handlers) != 1 {
+	// Cattle API config params not set, so SendToRancherHandler shouldn't get configured
+	if len(handlers) != 1 && len(handlers["start"]) != 1 {
 		t.Fatalf("Expected 1 configured hanlder: %v", handlers)
 	}
 
-	// RancherClient is not nil, so CreateHandler should be configured
+	// RancherClient is not nil, so SendToRancherHandler should be configured
 	handlers, err = getHandlersFn(dockerClient, &rclient.RancherClient{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(handlers) != 2 {
-		t.Fatalf("Expected 2 configured hanlders: %v, %#v", len(handlers), handlers)
+	if len(handlers) != 6 {
+		t.Fatalf("Expected 6 configured hanlders: %v, %#v", len(handlers), handlers)
 	}
 }

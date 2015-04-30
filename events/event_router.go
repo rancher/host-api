@@ -13,7 +13,7 @@ type Handler interface {
 }
 
 type EventRouter struct {
-	handlers      map[string]Handler
+	handlers      map[string][]Handler
 	dockerClient  *docker.Client
 	listener      chan *docker.APIEvents
 	workers       chan *worker
@@ -21,7 +21,7 @@ type EventRouter struct {
 }
 
 func NewEventRouter(bufferSize int, workerPoolSize int, dockerClient *docker.Client,
-	handlers map[string]Handler) (*EventRouter, error) {
+	handlers map[string][]Handler) (*EventRouter, error) {
 	workers := make(chan *worker, workerPoolSize)
 	for i := 0; i < workerPoolSize; i++ {
 		workers <- &worker{}
@@ -78,10 +78,12 @@ type worker struct{}
 
 func (w *worker) doWork(event *docker.APIEvents, e *EventRouter) {
 	defer func() { e.workers <- w }()
-	if handler, ok := e.handlers[event.Status]; ok {
+	if handlers, ok := e.handlers[event.Status]; ok {
 		log.Infof("Processing event: %#v", event)
-		if err := handler.Handle(event); err != nil {
-			log.Errorf("Error processing event %#v. Error: %v", event, err)
+		for _, handler := range handlers {
+			if err := handler.Handle(event); err != nil {
+				log.Errorf("Error processing event %#v. Error: %v", event, err)
+			}
 		}
 	}
 }

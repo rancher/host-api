@@ -18,7 +18,7 @@ func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
 type DockerEventsProcessor struct {
 	poolSize         int
 	getDockerClient  func() (*docker.Client, error)
-	getHandlers      func(*docker.Client, *rclient.RancherClient) (map[string]Handler, error)
+	getHandlers      func(*docker.Client, *rclient.RancherClient) (map[string][]Handler, error)
 	getRancherClient func() (*rclient.RancherClient, error)
 }
 
@@ -70,25 +70,30 @@ func getDockerClientFn() (*docker.Client, error) {
 	return NewDockerClient(false)
 }
 
-func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherClient) (map[string]Handler, error) {
+func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherClient) (map[string][]Handler, error) {
 
-	handlers := map[string]Handler{}
+	handlers := map[string][]Handler{}
 
 	// Start Handler
 	startHandler := &StartHandler{
 		Client:            dockerClient,
 		ContainerStateDir: getContainerStateDir(),
 	}
-	handlers["start"] = startHandler
+	handlers["start"] = []Handler{startHandler}
 
-	// Create Handler
+	// Rancher Event Handler
 	if rancherClient != nil {
-		createHandler := &CreateHandler{
+		sendToRancherHandler := &SendToRancherHandler{
 			client:   dockerClient,
 			rancher:  rancherClient,
 			hostUuid: getHostUuid(),
 		}
-		handlers["create"] = createHandler
+		handlers["start"] = append(handlers["start"], sendToRancherHandler)
+		handlers["create"] = []Handler{sendToRancherHandler}
+		handlers["stop"] = []Handler{sendToRancherHandler}
+		handlers["die"] = []Handler{sendToRancherHandler}
+		handlers["kill"] = []Handler{sendToRancherHandler}
+		handlers["destroy"] = []Handler{sendToRancherHandler}
 	}
 
 	return handlers, nil
