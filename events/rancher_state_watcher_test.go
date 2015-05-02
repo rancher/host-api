@@ -137,7 +137,7 @@ func assertEvent(fileName string, eventChan chan *docker.APIEvents, t *testing.T
 	select {
 	case event := <-eventChan:
 		if event.ID != fileName || event.Status != "start" ||
-			event.From != "watcher-simulated" || event.Time != 0 {
+			event.From != simulatedEvent || event.Time != 0 {
 			t.Fatalf("Unexpected event: %#v", event)
 		}
 	case <-time.NewTimer(time.Millisecond * 300).C:

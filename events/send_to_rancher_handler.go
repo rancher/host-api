@@ -7,24 +7,32 @@ import (
 	rclient "github.com/rancherio/go-rancher/client"
 )
 
-type CreateHandler struct {
+type SendToRancherHandler struct {
 	client   SimpleDockerClient
 	rancher  *rclient.RancherClient
 	hostUuid string
 }
 
-func (h *CreateHandler) Handle(event *docker.APIEvents) error {
+func (h *SendToRancherHandler) Handle(event *docker.APIEvents) error {
+	// rancher_state_watcher sends a simulated event to the event router to initiate ip injection.
+	// This event should not be sent.
+	if event.From == simulatedEvent {
+		return nil
+	}
+
 	// Note: event.ID == container's ID
-	lock := locks.Lock("create." + event.ID)
+	lock := locks.Lock(event.Status + event.ID)
 	if lock == nil {
-		log.Warnf("Container locked. Can't run CreateHandler. ID: [%s]", event.ID)
+		log.Warnf("Container locked. Can't run SendToRancherHandler. Event: [%s], ID: [%s]", event.Status, event.ID)
 		return nil
 	}
 	defer lock.Unlock()
 
 	container, err := h.client.InspectContainer(event.ID)
 	if err != nil {
-		return err
+		if _, ok := err.(*docker.NoSuchContainer); !ok {
+			return err
+		}
 	}
 
 	containerEvent := &rclient.ContainerEvent{
@@ -32,8 +40,11 @@ func (h *CreateHandler) Handle(event *docker.APIEvents) error {
 		ExternalId:        event.ID,
 		ExternalFrom:      event.From,
 		ExternalTimestamp: int(event.Time),
-		DockerInspect:     container,
 		ReportedHostUuid:  h.hostUuid,
+	}
+	if container != nil {
+		containerEvent.DockerInspect = container
+
 	}
 
 	if _, err := h.rancher.ContainerEvent.Create(containerEvent); err != nil {

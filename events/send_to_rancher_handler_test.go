@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestCreateHandler(t *testing.T) {
+func TestSendToRancherHandler(t *testing.T) {
 	dockerClient := prep(t)
 
 	injectedIp := "10.1.2.3"
@@ -27,7 +27,7 @@ func TestCreateHandler(t *testing.T) {
 	}
 	rancher := mockRancherClient(expectedEvent, t)
 
-	handler := &CreateHandler{client: dockerClient, rancher: rancher, hostUuid: hostUuid}
+	handler := &SendToRancherHandler{client: dockerClient, rancher: rancher, hostUuid: hostUuid}
 
 	if err := handler.Handle(event); err != nil {
 		t.Fatal(err)

@@ -13,6 +13,7 @@ import (
 )
 
 const healthCheckFileName = ".healthcheck"
+const simulatedEvent = "-simulated-"
 
 type newWatcherFnDef func() (*fsnotify.Watcher, error)
 
@@ -112,7 +113,7 @@ func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, hea
 					dockerEvent := &docker.APIEvents{
 						ID:     id,
 						Status: "start",
-						From:   "watcher-simulated",
+						From:   simulatedEvent,
 					}
 					eventChannel <- dockerEvent
 				}
