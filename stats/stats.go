@@ -4,10 +4,6 @@ import (
 	"encoding/json"
 
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"time"
 	sigar "github.com/cloudfoundry/gosigar"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/google/cadvisor/client"
@@ -15,6 +11,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancherio/host-api/app/common/connect"
 	"github.com/rancherio/host-api/config"
+	"io"
+	"net/http"
+	"os"
+	"time"
 )
 
 func GetStats(rw http.ResponseWriter, req *http.Request) error {
@@ -41,11 +41,6 @@ func GetStats(rw http.ResponseWriter, req *http.Request) error {
 	}
 
 	for {
-		machineInfo, err := c.MachineInfo()
-		if err != nil {
-			return err
-		}
-
 		concreteSigar := &sigar.ConcreteSigar{}
 		memLimit, err := concreteSigar.GetMem()
 
