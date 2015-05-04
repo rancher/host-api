@@ -104,6 +104,10 @@
 			"ImportPath": "gopkg.in/fsnotify.v1",
 			"Comment": "v1.2.0",
 			"Rev": "96c060f6a6b7e0d6f75fddd10efeaca3e5d1bcb0"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/gosigar",
+			"Rev": "3ed7c74352dae6dc00bdc8c74045375352e3ec05"
 		}
 	]
 }

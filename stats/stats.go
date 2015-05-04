@@ -2,17 +2,19 @@ package stats
 
 import (
 	"encoding/json"
+
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
+	sigar "github.com/cloudfoundry/gosigar"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/google/cadvisor/client"
 	"github.com/google/cadvisor/info"
 	"github.com/gorilla/mux"
 	"github.com/rancherio/host-api/app/common/connect"
 	"github.com/rancherio/host-api/config"
-	"io"
-	"net/http"
-	"os"
-	"time"
 )
 
 func GetStats(rw http.ResponseWriter, req *http.Request) error {
@@ -44,7 +46,12 @@ func GetStats(rw http.ResponseWriter, req *http.Request) error {
 			return err
 		}
 
-		memLimit := machineInfo.MemoryCapacity
+		concreteSigar := &sigar.ConcreteSigar{}
+		memLimit, err := concreteSigar.GetMem()
+
+		if err != nil {
+			return err
+		}
 
 		info, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
 			NumStats: count,
@@ -53,7 +60,7 @@ func GetStats(rw http.ResponseWriter, req *http.Request) error {
 			return err
 		}
 
-		err = writeStats(info, memLimit, conn)
+		err = writeStats(info, memLimit.Total, conn)
 		if err != nil {
 			return err
 		}
@@ -69,9 +76,9 @@ func GetStats(rw http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) error {
+func writeStats(info *info.ContainerInfo, memLimit uint64, writer io.Writer) error {
 	for _, stat := range info.Stats {
-		stat.Memory.Limit = uint64(memLimit)
+		stat.Memory.Limit = memLimit
 		data, err := json.Marshal(stat)
 		if err != nil {
 			return err
