@@ -16,13 +16,28 @@ func createContainer(client *docker.Client) (*docker.Container, error) {
 	return client.CreateContainer(opts)
 }
 
+func createNetTestContainerNoLabel(client *docker.Client, ip string) (*docker.Container, error) {
+	return createNetTestContainerInternal(client, ip, false)
+}
+
 func createNetTestContainer(client *docker.Client, ip string) (*docker.Container, error) {
+	return createNetTestContainerInternal(client, ip, true)
+}
+
+func createNetTestContainerInternal(client *docker.Client, ip string, useLabel bool) (*docker.Container, error) {
+	labels := make(map[string]string)
 	env := []string{}
 	if ip != "" {
-		env = append(env, "RANCHER_IP="+ip)
+		if useLabel {
+			labels["io.rancher.container.ip"] = ip
+		} else {
+			env = append(env, "RANCHER_IP="+ip)
+		}
 	}
+
 	config := &docker.Config{
 		Image:     "busybox:latest",
+		Labels:    labels,
 		Env:       env,
 		OpenStdin: true,
 		StdinOnce: false,
@@ -78,7 +93,12 @@ func prep(t *testing.T) *docker.Client {
 			// - nsenter and net-utils.sh are on the path in the b2d vm
 			// - This link exists: ln -s /proc/ /host/proc
 			// See the README.md in this directory for setup details.
-			return exec.Command("boot2docker", "ssh", "-t", "sudo", "net-util.sh", "-p", pid, "-i", ip)
+			dockerMachine := os.Getenv("CATTLE_TEST_DOCKER_MACHINE_HOST")
+			if dockerMachine != "" {
+				return exec.Command("docker-machine", "ssh", dockerMachine, "sudo net-util.sh -p "+pid+" -i "+ip)
+			} else {
+				return exec.Command("boot2docker", "ssh", "-t", "sudo", "net-util.sh", "-p", pid, "-i", ip)
+			}
 		}
 	}
 

@@ -9,7 +9,7 @@ import (
 
 const (
 	defaultUnixSocket = "unix:///var/run/docker.sock"
-	defaultApiVersion = "1.16"
+	defaultApiVersion = "1.18"
 )
 
 func NewDockerClient(useDockerConnectEnvVars bool) (*docker.Client, error) {

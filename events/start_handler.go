@@ -17,7 +17,8 @@ import (
 	"github.com/rancherio/go-machine-service/locks"
 )
 
-const RancherIPKey = "RANCHER_IP="
+const RancherIPLabelKey = "io.rancher.container.ip"
+const RancherIPEnvKey = "RANCHER_IP="
 const RancherNameserver = "169.254.169.250"
 
 type StartHandler struct {
@@ -112,9 +113,12 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 }
 
 func (h *StartHandler) getRancherIP(c *docker.Container) (string, error) {
+	if ip, ok := c.Config.Labels[RancherIPLabelKey]; ok {
+		return ip, nil
+	}
 	for _, env := range c.Config.Env {
-		if strings.HasPrefix(env, RancherIPKey) {
-			return strings.TrimPrefix(env, RancherIPKey), nil
+		if strings.HasPrefix(env, RancherIPEnvKey) {
+			return strings.TrimPrefix(env, RancherIPEnvKey), nil
 		}
 	}
 

@@ -35,7 +35,10 @@ func TestProcessDockerEvents(t *testing.T) {
 	}
 
 	// Create pre-existing containers before starting event listener
-	preexistRunning, _ := createNetTestContainer(dockerClient, "10.1.2.3")
+	preexistRunning, err := createNetTestContainer(dockerClient, "10.1.2.3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: preexistRunning.ID, Force: true,
 			RemoveVolumes: true}); err != nil {
