@@ -1,24 +1,66 @@
 package events
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
-	"github.com/rancherio/go-machine-service/locks"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/rancherio/go-machine-service/locks"
 )
 
 const RancherIPKey = "RANCHER_IP="
+const RancherNameserver = "169.254.169.250"
 
 type StartHandler struct {
 	Client            SimpleDockerClient
 	ContainerStateDir string
+}
+
+func setupResolvConf(container *docker.Container) error {
+	p := container.ResolvConfPath
+	input, err := os.Open(p)
+	if err != nil {
+		return err
+	}
+
+	defer input.Close()
+
+	var buffer bytes.Buffer
+	scanner := bufio.NewScanner(input)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if strings.Contains(text, RancherNameserver) {
+			continue
+		}
+
+		if strings.HasPrefix(text, "nameserver") {
+			text = "# " + text
+		}
+
+		if _, err := buffer.Write([]byte(text)); err != nil {
+			return err
+		}
+
+		if _, err := buffer.Write([]byte("\n")); err != nil {
+			return err
+		}
+	}
+
+	buffer.Write([]byte("nameserver "))
+	buffer.Write([]byte(RancherNameserver))
+	buffer.Write([]byte("\n"))
+
+	input.Close()
+	return ioutil.WriteFile(p, buffer.Bytes(), 0666)
 }
 
 func (h *StartHandler) Handle(event *docker.APIEvents) error {
@@ -66,7 +108,7 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 		return err
 	}
 
-	return nil
+	return setupResolvConf(c)
 }
 
 func (h *StartHandler) getRancherIP(c *docker.Container) (string, error) {
