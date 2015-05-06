@@ -8,6 +8,12 @@ cd $(dirname $0)
 
 mkdir -p ${CATTLE_HOME}/bin
 
+PID=$(pidof host-api || true)
+if [ -n "${PID}" ]; then
+    kill $PID
+    sleep 1
+fi
+
 cp bin/host-api bin/net-util.sh ${CATTLE_HOME}/bin
 
 chmod +x ${CATTLE_HOME}/bin/host-api
