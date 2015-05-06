@@ -27,6 +27,23 @@ func TestStartHandlerHappyPath(t *testing.T) {
 	}
 	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
 
+	assertIpInject(injectedIp, c, dockerClient, t)
+}
+
+func TestStartHandlerEnvVar(t *testing.T) {
+	dockerClient := prep(t)
+
+	injectedIp := "10.1.2.3"
+	c, err := createNetTestContainerNoLabel(dockerClient, injectedIp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+
+	assertIpInject(injectedIp, c, dockerClient, t)
+}
+
+func assertIpInject(injectedIp string, c *docker.Container, dockerClient *docker.Client, t *testing.T) {
 	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
 		t.Fatal(err)
 	}
