@@ -18,6 +18,7 @@ import (
 )
 
 const RancherIPLabelKey = "io.rancher.container.ip"
+const RancherSystemLabelKey = "io.rancher.container.system"
 const RancherIPEnvKey = "RANCHER_IP="
 const RancherNameserver = "169.254.169.250"
 
@@ -27,6 +28,10 @@ type StartHandler struct {
 }
 
 func setupResolvConf(container *docker.Container) error {
+	if _, ok := container.Config.Labels[RancherSystemLabelKey]; ok {
+		return nil
+	}
+
 	p := container.ResolvConfPath
 	input, err := os.Open(p)
 	if err != nil {

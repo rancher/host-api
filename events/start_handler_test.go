@@ -93,7 +93,7 @@ func (m *mockClient) InspectContainer(id string) (*docker.Container, error) {
 func TestStoppedRunning(t *testing.T) {
 	injectedIp := "10.1.2.3"
 	id := "some id"
-	conf := &docker.Config{Env: []string{"RANCHER_IP=" + injectedIp}}
+	conf := &docker.Config{Labels: map[string]string{"io.rancher.container.system": "fakeSysContainer"}, Env: []string{"RANCHER_IP=" + injectedIp}}
 	state := docker.State{Pid: 123, Running: true}
 	container := &docker.Container{ID: id, Config: conf, State: state}
 

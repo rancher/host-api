@@ -26,6 +26,7 @@ func createNetTestContainer(client *docker.Client, ip string) (*docker.Container
 
 func createNetTestContainerInternal(client *docker.Client, ip string, useLabel bool) (*docker.Container, error) {
 	labels := make(map[string]string)
+	labels["io.rancher.container.system"] = "FakeSysContainer"
 	env := []string{}
 	if ip != "" {
 		if useLabel {
