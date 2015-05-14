@@ -21,6 +21,7 @@ const RancherIPLabelKey = "io.rancher.container.ip"
 const RancherSystemLabelKey = "io.rancher.container.system"
 const RancherIPEnvKey = "RANCHER_IP="
 const RancherNameserver = "169.254.169.250"
+const RancherDomain = "rancher.internal"
 
 type StartHandler struct {
 	Client            SimpleDockerClient
@@ -50,6 +51,10 @@ func setupResolvConf(container *docker.Container) error {
 
 		if strings.HasPrefix(text, "nameserver") {
 			text = "# " + text
+		}
+
+		if strings.HasPrefix(text, "search") && !strings.Contains(text, RancherDomain) {
+			text = text + " " + RancherDomain
 		}
 
 		if _, err := buffer.Write([]byte(text)); err != nil {
