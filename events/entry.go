@@ -90,7 +90,6 @@ func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherCl
 			hostUuid: getHostUuid(),
 		}
 		handlers["start"] = append(handlers["start"], sendToRancherHandler)
-		handlers["create"] = []Handler{sendToRancherHandler}
 		handlers["stop"] = []Handler{sendToRancherHandler}
 		handlers["die"] = []Handler{sendToRancherHandler}
 		handlers["kill"] = []Handler{sendToRancherHandler}
