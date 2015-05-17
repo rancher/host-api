@@ -101,7 +101,7 @@ func TestGetHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(handlers) != 6 {
-		t.Fatalf("Expected 6 configured hanlders: %v, %#v", len(handlers), handlers)
+	if len(handlers) != 5 {
+		t.Fatalf("Expected 5 configured hanlders: %v, %#v", len(handlers), handlers)
 	}
 }
