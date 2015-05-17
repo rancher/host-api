@@ -76,6 +76,9 @@ func TestProcessDockerEvents(t *testing.T) {
 			if e.ID == preexistPaused.ID {
 				waitingOnPaused = false
 			}
+			if e.From != simulatedEvent {
+				t.Fatalf("Startup event was not marked as simulated. From value: [%v]", e.From)
+			}
 		case <-time.After(10 * time.Second):
 			t.Fatalf("Never received event for preexisting container [%v]", preexistRunning.ID)
 		}
