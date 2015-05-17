@@ -60,6 +60,7 @@ func (de *DockerEventsProcessor) Process() error {
 		event := &docker.APIEvents{
 			ID:     c.ID,
 			Status: "start",
+			From:   simulatedEvent,
 		}
 		router.listener <- event
 	}
