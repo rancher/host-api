@@ -81,7 +81,7 @@ if [ -n "$IP" ]; then
         ip addr show
     fi
 
-    if ! ip route show | grep -q 169.254.0.0; then
-        ip route add 169.254.0.0/16 dev $DEV src $(echo $IP | cut -f1 -d'/')
+    if ! ip route show | grep -q 169.254.169.250; then
+        ip route add 169.254.169.250/32 dev $DEV src $(echo $IP | cut -f1 -d'/')
     fi
 fi
