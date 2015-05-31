@@ -6,19 +6,20 @@ const (
 
 type LoadBalancerHealthCheck struct {
 	Resource
-    
-    HealthyThreshold int `json:"healthyThreshold,omitempty"`
-    
-    Interval int `json:"interval,omitempty"`
-    
-    Name string `json:"name,omitempty"`
-    
-    ResponseTimeout int `json:"responseTimeout,omitempty"`
-    
-    UnhealthyThreshold int `json:"unhealthyThreshold,omitempty"`
-    
-    Uri string `json:"uri,omitempty"`
-    
+
+	HealthyThreshold int64 `json:"healthyThreshold,omitempty" yaml:"healthy_threshold,omitempty"`
+
+	Interval int64 `json:"interval,omitempty" yaml:"interval,omitempty"`
+
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+
+	Port int64 `json:"port,omitempty" yaml:"port,omitempty"`
+
+	RequestLine string `json:"requestLine,omitempty" yaml:"request_line,omitempty"`
+
+	ResponseTimeout int64 `json:"responseTimeout,omitempty" yaml:"response_timeout,omitempty"`
+
+	UnhealthyThreshold int64 `json:"unhealthyThreshold,omitempty" yaml:"unhealthy_threshold,omitempty"`
 }
 
 type LoadBalancerHealthCheckCollection struct {

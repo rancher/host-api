@@ -4,6 +4,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	rclient "github.com/rancherio/go-rancher/client"
 	"github.com/rancherio/host-api/config"
+	"github.com/rancherio/host-api/util"
 )
 
 func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
@@ -11,7 +12,7 @@ func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
 		poolSize:         poolSize,
 		getDockerClient:  getDockerClientFn,
 		getHandlers:      getHandlersFn,
-		getRancherClient: getRancherClientFn,
+		getRancherClient: util.GetRancherClient,
 	}
 }
 
@@ -97,26 +98,6 @@ func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherCl
 	}
 
 	return handlers, nil
-}
-
-func getRancherClientFn() (*rclient.RancherClient, error) {
-	apiUrl := config.Config.CattleUrl
-	accessKey := config.Config.CattleAccessKey
-	secretKey := config.Config.CattleSecretKey
-
-	if apiUrl == "" || accessKey == "" || secretKey == "" {
-		return nil, nil
-	}
-
-	apiClient, err := rclient.NewRancherClient(&rclient.ClientOpts{
-		Url:       apiUrl,
-		AccessKey: accessKey,
-		SecretKey: secretKey,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return apiClient, nil
 }
 
 func getHostUuid() string {

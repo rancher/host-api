@@ -15,9 +15,9 @@ func TestSendToRancherHandler(t *testing.T) {
 
 	from := "foo/bar"
 	status := "create"
-	eventTime := 1426091566
+	var eventTime int64 = 1426091566
 	hostUuid := "host-123"
-	event := &docker.APIEvents{ID: c.ID, From: from, Status: status, Time: int64(eventTime)}
+	event := &docker.APIEvents{ID: c.ID, From: from, Status: status, Time: eventTime}
 	expectedEvent := &rclient.ContainerEvent{
 		ExternalId:        c.ID,
 		ExternalFrom:      from,

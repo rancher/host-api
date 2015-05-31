@@ -39,7 +39,7 @@ func (h *SendToRancherHandler) Handle(event *docker.APIEvents) error {
 		ExternalStatus:    event.Status,
 		ExternalId:        event.ID,
 		ExternalFrom:      event.From,
-		ExternalTimestamp: int(event.Time),
+		ExternalTimestamp: int64(event.Time),
 		ReportedHostUuid:  h.hostUuid,
 	}
 	if container != nil {

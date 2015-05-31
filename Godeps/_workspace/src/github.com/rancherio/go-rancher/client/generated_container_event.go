@@ -6,37 +6,36 @@ const (
 
 type ContainerEvent struct {
 	Resource
-    
-    AccountId string `json:"accountId,omitempty"`
-    
-    Created string `json:"created,omitempty"`
-    
-    Data map[string]interface{} `json:"data,omitempty"`
-    
-    DockerInspect interface{} `json:"dockerInspect,omitempty"`
-    
-    ExternalFrom string `json:"externalFrom,omitempty"`
-    
-    ExternalId string `json:"externalId,omitempty"`
-    
-    ExternalStatus string `json:"externalStatus,omitempty"`
-    
-    ExternalTimestamp int `json:"externalTimestamp,omitempty"`
-    
-    HostId string `json:"hostId,omitempty"`
-    
-    Kind string `json:"kind,omitempty"`
-    
-    ReportedHostUuid string `json:"reportedHostUuid,omitempty"`
-    
-    State string `json:"state,omitempty"`
-    
-    Transitioning string `json:"transitioning,omitempty"`
-    
-    TransitioningMessage string `json:"transitioningMessage,omitempty"`
-    
-    TransitioningProgress int `json:"transitioningProgress,omitempty"`
-    
+
+	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
+
+	Created string `json:"created,omitempty" yaml:"created,omitempty"`
+
+	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
+
+	DockerInspect interface{} `json:"dockerInspect,omitempty" yaml:"docker_inspect,omitempty"`
+
+	ExternalFrom string `json:"externalFrom,omitempty" yaml:"external_from,omitempty"`
+
+	ExternalId string `json:"externalId,omitempty" yaml:"external_id,omitempty"`
+
+	ExternalStatus string `json:"externalStatus,omitempty" yaml:"external_status,omitempty"`
+
+	ExternalTimestamp int64 `json:"externalTimestamp,omitempty" yaml:"external_timestamp,omitempty"`
+
+	HostId string `json:"hostId,omitempty" yaml:"host_id,omitempty"`
+
+	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
+
+	ReportedHostUuid string `json:"reportedHostUuid,omitempty" yaml:"reported_host_uuid,omitempty"`
+
+	State string `json:"state,omitempty" yaml:"state,omitempty"`
+
+	Transitioning string `json:"transitioning,omitempty" yaml:"transitioning,omitempty"`
+
+	TransitioningMessage string `json:"transitioningMessage,omitempty" yaml:"transitioning_message,omitempty"`
+
+	TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
 }
 
 type ContainerEventCollection struct {
@@ -54,8 +53,10 @@ type ContainerEventOperations interface {
 	Update(existing *ContainerEvent, updates interface{}) (*ContainerEvent, error)
 	ById(id string) (*ContainerEvent, error)
 	Delete(container *ContainerEvent) error
-    ActionCreate (*ContainerEvent) (*ContainerEvent, error)
-    ActionRemove (*ContainerEvent) (*ContainerEvent, error)
+
+	ActionCreate(*ContainerEvent) (*ContainerEvent, error)
+
+	ActionRemove(*ContainerEvent) (*ContainerEvent, error)
 }
 
 func newContainerEventClient(rancherClient *RancherClient) *ContainerEventClient {
@@ -93,13 +94,19 @@ func (c *ContainerEventClient) Delete(container *ContainerEvent) error {
 }
 
 func (c *ContainerEventClient) ActionCreate(resource *ContainerEvent) (*ContainerEvent, error) {
+
 	resp := &ContainerEvent{}
-	err := c.rancherClient.doEmptyAction(CONTAINER_EVENT_TYPE, "create", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(CONTAINER_EVENT_TYPE, "create", &resource.Resource, nil, resp)
+
 	return resp, err
 }
 
 func (c *ContainerEventClient) ActionRemove(resource *ContainerEvent) (*ContainerEvent, error) {
+
 	resp := &ContainerEvent{}
-	err := c.rancherClient.doEmptyAction(CONTAINER_EVENT_TYPE, "remove", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(CONTAINER_EVENT_TYPE, "remove", &resource.Resource, nil, resp)
+
 	return resp, err
 }
