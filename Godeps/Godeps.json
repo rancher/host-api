@@ -97,8 +97,7 @@
 		},
 		{
 			"ImportPath": "github.com/rancherio/go-rancher/client",
-			"Comment": "v0.1.0",
-			"Rev": "166cde1ff3be90b9199a3703177668b647cbdcf4"
+			"Rev": "129c390e42e18f4b850a2e7af3d1a6eb22859fca"
 		},
 		{
 			"ImportPath": "gopkg.in/fsnotify.v1",

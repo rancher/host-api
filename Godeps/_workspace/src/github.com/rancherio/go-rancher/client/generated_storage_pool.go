@@ -6,33 +6,32 @@ const (
 
 type StoragePool struct {
 	Resource
-    
-    AccountId string `json:"accountId,omitempty"`
-    
-    Created string `json:"created,omitempty"`
-    
-    Data map[string]interface{} `json:"data,omitempty"`
-    
-    Description string `json:"description,omitempty"`
-    
-    Kind string `json:"kind,omitempty"`
-    
-    Name string `json:"name,omitempty"`
-    
-    RemoveTime string `json:"removeTime,omitempty"`
-    
-    Removed string `json:"removed,omitempty"`
-    
-    State string `json:"state,omitempty"`
-    
-    Transitioning string `json:"transitioning,omitempty"`
-    
-    TransitioningMessage string `json:"transitioningMessage,omitempty"`
-    
-    TransitioningProgress int `json:"transitioningProgress,omitempty"`
-    
-    Uuid string `json:"uuid,omitempty"`
-    
+
+	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
+
+	Created string `json:"created,omitempty" yaml:"created,omitempty"`
+
+	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
+
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+
+	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
+
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+
+	RemoveTime string `json:"removeTime,omitempty" yaml:"remove_time,omitempty"`
+
+	Removed string `json:"removed,omitempty" yaml:"removed,omitempty"`
+
+	State string `json:"state,omitempty" yaml:"state,omitempty"`
+
+	Transitioning string `json:"transitioning,omitempty" yaml:"transitioning,omitempty"`
+
+	TransitioningMessage string `json:"transitioningMessage,omitempty" yaml:"transitioning_message,omitempty"`
+
+	TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
+
+	Uuid string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 }
 
 type StoragePoolCollection struct {
@@ -50,13 +49,20 @@ type StoragePoolOperations interface {
 	Update(existing *StoragePool, updates interface{}) (*StoragePool, error)
 	ById(id string) (*StoragePool, error)
 	Delete(container *StoragePool) error
-    ActionActivate (*StoragePool) (*StoragePool, error)
-    ActionCreate (*StoragePool) (*StoragePool, error)
-    ActionDeactivate (*StoragePool) (*StoragePool, error)
-    ActionPurge (*StoragePool) (*StoragePool, error)
-    ActionRemove (*StoragePool) (*StoragePool, error)
-    ActionRestore (*StoragePool) (*StoragePool, error)
-    ActionUpdate (*StoragePool) (*StoragePool, error)
+
+	ActionActivate(*StoragePool) (*StoragePool, error)
+
+	ActionCreate(*StoragePool) (*StoragePool, error)
+
+	ActionDeactivate(*StoragePool) (*StoragePool, error)
+
+	ActionPurge(*StoragePool) (*StoragePool, error)
+
+	ActionRemove(*StoragePool) (*StoragePool, error)
+
+	ActionRestore(*StoragePool) (*StoragePool, error)
+
+	ActionUpdate(*StoragePool) (*StoragePool, error)
 }
 
 func newStoragePoolClient(rancherClient *RancherClient) *StoragePoolClient {
@@ -94,43 +100,64 @@ func (c *StoragePoolClient) Delete(container *StoragePool) error {
 }
 
 func (c *StoragePoolClient) ActionActivate(resource *StoragePool) (*StoragePool, error) {
+
 	resp := &StoragePool{}
-	err := c.rancherClient.doEmptyAction(STORAGE_POOL_TYPE, "activate", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(STORAGE_POOL_TYPE, "activate", &resource.Resource, nil, resp)
+
 	return resp, err
 }
 
 func (c *StoragePoolClient) ActionCreate(resource *StoragePool) (*StoragePool, error) {
+
 	resp := &StoragePool{}
-	err := c.rancherClient.doEmptyAction(STORAGE_POOL_TYPE, "create", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(STORAGE_POOL_TYPE, "create", &resource.Resource, nil, resp)
+
 	return resp, err
 }
 
 func (c *StoragePoolClient) ActionDeactivate(resource *StoragePool) (*StoragePool, error) {
+
 	resp := &StoragePool{}
-	err := c.rancherClient.doEmptyAction(STORAGE_POOL_TYPE, "deactivate", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(STORAGE_POOL_TYPE, "deactivate", &resource.Resource, nil, resp)
+
 	return resp, err
 }
 
 func (c *StoragePoolClient) ActionPurge(resource *StoragePool) (*StoragePool, error) {
+
 	resp := &StoragePool{}
-	err := c.rancherClient.doEmptyAction(STORAGE_POOL_TYPE, "purge", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(STORAGE_POOL_TYPE, "purge", &resource.Resource, nil, resp)
+
 	return resp, err
 }
 
 func (c *StoragePoolClient) ActionRemove(resource *StoragePool) (*StoragePool, error) {
+
 	resp := &StoragePool{}
-	err := c.rancherClient.doEmptyAction(STORAGE_POOL_TYPE, "remove", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(STORAGE_POOL_TYPE, "remove", &resource.Resource, nil, resp)
+
 	return resp, err
 }
 
 func (c *StoragePoolClient) ActionRestore(resource *StoragePool) (*StoragePool, error) {
+
 	resp := &StoragePool{}
-	err := c.rancherClient.doEmptyAction(STORAGE_POOL_TYPE, "restore", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(STORAGE_POOL_TYPE, "restore", &resource.Resource, nil, resp)
+
 	return resp, err
 }
 
 func (c *StoragePoolClient) ActionUpdate(resource *StoragePool) (*StoragePool, error) {
+
 	resp := &StoragePool{}
-	err := c.rancherClient.doEmptyAction(STORAGE_POOL_TYPE, "update", &resource.Resource, resp)
+
+	err := c.rancherClient.doAction(STORAGE_POOL_TYPE, "update", &resource.Resource, nil, resp)
+
 	return resp, err
 }

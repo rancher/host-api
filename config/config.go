@@ -17,6 +17,7 @@ type config struct {
 	Systemd         bool
 	NumStats        int
 	Auth            bool
+	HaProxyMonitor  bool
 	Key             string
 	HostUuid        string
 	Port            int
@@ -28,6 +29,8 @@ type config struct {
 	CattleAccessKey string
 	CattleSecretKey string
 	CattleStateDir  string
+	PidFile         string
+	LogFile         string
 }
 
 var Config config
@@ -51,6 +54,7 @@ func ParsedPublicKey() error {
 }
 
 func Parse() error {
+	flag.BoolVar(&Config.HaProxyMonitor, "haproxy-monitor", false, "Monitor HAProxy")
 	flag.IntVar(&Config.Port, "port", 8080, "Listen port")
 	flag.StringVar(&Config.Ip, "ip", "", "Listen IP, defaults to all IPs")
 	flag.StringVar(&Config.CAdvisorUrl, "cadvisor-url", "http://localhost:8081", "cAdvisor URL")
@@ -65,6 +69,8 @@ func Parse() error {
 	flag.StringVar(&Config.CattleAccessKey, "cattle-access-key", "", "Access key for cattle api")
 	flag.StringVar(&Config.CattleSecretKey, "cattle-secret-key", "", "Secret key for cattle api")
 	flag.StringVar(&Config.CattleStateDir, "cattle-state-dir", "", "Directory where Rancher state is persisted.")
+	flag.StringVar(&Config.PidFile, "pid-file", "", "PID file")
+	flag.StringVar(&Config.LogFile, "log", "", "Log file")
 
 	confOptions := &globalconf.Options{
 		EnvPrefix: "HOST_API_",

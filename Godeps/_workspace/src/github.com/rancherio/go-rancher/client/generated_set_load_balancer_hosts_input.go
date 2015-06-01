@@ -6,9 +6,8 @@ const (
 
 type SetLoadBalancerHostsInput struct {
 	Resource
-    
-    HostIds []string `json:"hostIds,omitempty"`
-    
+
+	HostIds []string `json:"hostIds,omitempty" yaml:"host_ids,omitempty"`
 }
 
 type SetLoadBalancerHostsInputCollection struct {
