@@ -75,20 +75,19 @@ func pullTestImages(client *docker.Client) {
 }
 
 func TestMain(m *testing.M) {
-	client, _ := NewDockerClient(useEnvVars())
+	client, _ := NewDockerClient()
 	pullTestImages(client)
 	result := m.Run()
 	os.Exit(result)
 }
 
 func prep(t *testing.T) *docker.Client {
-	useEnvVars := useEnvVars()
-	dockerClient, err := NewDockerClient(useEnvVars)
+	dockerClient, err := NewDockerClient()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if useEnvVars {
+	if useEnvVars() {
 		buildCommand = func(pid string, ip string) *exec.Cmd {
 			// Assumes boot2docker. Also assumes that:
 			// - nsenter and net-utils.sh are on the path in the b2d vm
