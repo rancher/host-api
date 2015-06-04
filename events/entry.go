@@ -69,7 +69,7 @@ func (de *DockerEventsProcessor) Process() error {
 }
 
 func getDockerClientFn() (*docker.Client, error) {
-	return NewDockerClient(false)
+	return NewDockerClient()
 }
 
 func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherClient) (map[string][]Handler, error) {

@@ -1,47 +1,96 @@
 package stats
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
+	log "github.com/Sirupsen/logrus"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/google/cadvisor/client"
 	"github.com/google/cadvisor/info"
-	"github.com/gorilla/mux"
-	"github.com/rancherio/host-api/app/common/connect"
+
 	"github.com/rancherio/host-api/config"
-	"io"
-	"net/http"
-	"os"
-	"time"
+	"github.com/rancherio/websocket-proxy/backend"
+	"github.com/rancherio/websocket-proxy/common"
 )
 
-func GetStats(rw http.ResponseWriter, req *http.Request) error {
-	id := mux.Vars(req)["id"]
+type StatsHandler struct {
+}
+
+func pathParts(path string) []string {
+	path = strings.TrimPrefix(path, "/")
+	path = strings.TrimSuffix(path, "/")
+	return strings.Split(path, "/")
+}
+
+func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
+	defer backend.SignalHandlerClosed(key, response)
+
+	requestUrl, err := url.Parse(initialMessage)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "message": initialMessage}).Error("Couldn't parse url from message.")
+		return
+	}
+
+	id := ""
+	parts := pathParts(requestUrl.Path)
+	if len(parts) == 3 {
+		id = parts[2]
+	}
 
 	container, err := resolveContainer(id)
 	if err != nil {
-		return err
+		log.WithFields(log.Fields{"id": id, "error": err}).Error("Couldn't find container for id.")
+		return
 	}
 
 	c, err := client.NewClient(config.Config.CAdvisorUrl)
 	if err != nil {
-		return err
+		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
+		return
 	}
 
-	conn, err := connect.GetConnection(rw, req)
-	if err != nil {
-		return err
-	}
+	reader, writer := io.Pipe()
 
-	count := 1
-	if conn.IsContinuous() {
-		count = config.Config.NumStats
-	}
+	go func(w *io.PipeWriter) {
+		for {
+			_, ok := <-incomingMessages
+			if !ok {
+				w.Close()
+				return
+			}
+		}
+	}(writer)
+
+	go func(r *io.PipeReader) {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			text := scanner.Text()
+			message := common.Message{
+				Key:  key,
+				Type: common.Body,
+				Body: text,
+			}
+			response <- message
+		}
+		if err := scanner.Err(); err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Error with the container stat scanner.")
+		}
+	}(reader)
+
+	count := config.Config.NumStats
 
 	for {
 		machineInfo, err := c.MachineInfo()
 		if err != nil {
-			return err
+			log.WithFields(log.Fields{"error": err}).Error("Error getting machine info.")
+			return
 		}
 
 		memLimit := machineInfo.MemoryCapacity
@@ -50,23 +99,19 @@ func GetStats(rw http.ResponseWriter, req *http.Request) error {
 			NumStats: count,
 		})
 		if err != nil {
-			return err
+			return
 		}
 
-		err = writeStats(info, memLimit, conn)
+		err = writeStats(info, memLimit, writer)
 		if err != nil {
-			return err
+			return
 		}
 
-		if conn.IsContinuous() {
-			time.Sleep(1 * time.Second)
-			count = 1
-		} else {
-			break
-		}
+		time.Sleep(1 * time.Second)
+		count = 1
 	}
 
-	return nil
+	return
 }
 
 func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) error {
@@ -78,6 +123,7 @@ func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) erro
 		}
 
 		writer.Write(data)
+		writer.Write([]byte("\n"))
 	}
 
 	return nil

@@ -1,24 +1,28 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancherio/host-api/app/common"
-	"github.com/rancherio/host-api/auth"
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/host-api/events"
+	"github.com/rancherio/host-api/exec"
 	"github.com/rancherio/host-api/healthcheck"
 	"github.com/rancherio/host-api/logs"
 	"github.com/rancherio/host-api/stats"
+	"github.com/rancherio/host-api/util"
 
 	"github.com/golang/glog"
-	"github.com/gorilla/mux"
+
+	rclient "github.com/rancherio/go-rancher/client"
+	"github.com/rancherio/websocket-proxy/backend"
 )
 
 func main() {
@@ -59,17 +63,63 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	router := mux.NewRouter()
-	http.Handle("/", auth.AuthHttpInterceptor(router))
-
-	router.Handle("/v1/stats", common.ErrorHandler(stats.GetStats)).Methods("GET")
-	router.Handle("/v1/stats/{id}", common.ErrorHandler(stats.GetStats)).Methods("GET")
-	router.Handle("/v1/logs/", common.ErrorHandler(logs.GetLogs)).Methods("GET")
-
-	var listen = fmt.Sprintf("%s:%d", config.Config.Ip, config.Config.Port)
-	err = http.ListenAndServe(listen, nil)
-
+	rancherClient, err := util.GetRancherClient()
 	if err != nil {
 		logrus.Fatal(err)
 	}
+
+	tokenRequest := &rclient.HostApiProxyToken{
+		ReportedUuid: config.Config.HostUuid,
+	}
+	tokenResponse, err := getConnectionToken(0, tokenRequest, rancherClient)
+	if err != nil {
+		logrus.Fatal(err)
+	} else if tokenResponse == nil {
+		// nil error and blank token means the proxy is turned off. Just block forever so main function doesn't exit
+		var block chan bool
+		<-block
+	}
+
+	handlers := make(map[string]backend.Handler)
+	handlers["/v1/logs/"] = &logs.LogsHandler{}
+	handlers["/v1/stats/"] = &stats.StatsHandler{}
+	handlers["/v1/exec/"] = &exec.ExecHandler{}
+	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, config.Config.HostUuid, handlers)
+}
+
+const maxWaitOnHostTries = 20
+
+func getConnectionToken(try int, tokenReq *rclient.HostApiProxyToken, rancherClient *rclient.RancherClient) (*rclient.HostApiProxyToken, error) {
+	if try >= maxWaitOnHostTries {
+		return nil, fmt.Errorf("Reached max retry attempts for getting token.")
+	}
+
+	tokenResponse, err := rancherClient.HostApiProxyToken.Create(tokenReq)
+	if err != nil {
+		if apiError, ok := err.(*rclient.ApiError); ok {
+			if apiError.StatusCode == 422 {
+				parsed := &ParsedError{}
+				if uErr := json.Unmarshal([]byte(apiError.Body), &parsed); uErr == nil {
+					if strings.EqualFold(parsed.Code, "InvalidReference") && strings.EqualFold(parsed.FieldName, "reportedUuid") {
+						logrus.WithField("reportedUuid", config.Config.HostUuid).WithField("Attempt", try).Infof("Host not registered yet. Sleeping 1 second and trying again.")
+						time.Sleep(time.Second)
+						try += 1
+						return getConnectionToken(try, tokenReq, rancherClient) // Recursion!
+					}
+				} else {
+					return nil, uErr
+				}
+			} else if apiError.StatusCode == 501 {
+				logrus.Infof("Host-api proxy disabled. Will not connect.")
+				return nil, nil
+			}
+			return nil, err
+		}
+	}
+	return tokenResponse, nil
+}
+
+type ParsedError struct {
+	Code      string
+	FieldName string
 }
