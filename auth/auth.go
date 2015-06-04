@@ -43,6 +43,28 @@ func Auth(rw http.ResponseWriter, req *http.Request) bool {
 	return true
 }
 
+func GetAndCheckToken(tokenString string) (*jwt.Token, bool) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return config.Config.ParsedPublicKey, nil
+	})
+	if err != nil {
+		common.CheckError(err, 2)
+		return token, false
+	}
+
+	if !token.Valid {
+		return token, false
+	}
+
+	if config.Config.HostUuidCheck && token.Claims["hostUuid"] != config.Config.HostUuid {
+		glog.Infoln("Host UUID mismatch , authentication failed")
+		return token, false
+	}
+
+	return token, true
+
+}
+
 func AuthHttpInterceptor(router http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		startTime := time.Now()

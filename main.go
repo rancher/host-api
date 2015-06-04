@@ -19,6 +19,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+
+	"github.com/rancherio/websocket-proxy/backend"
 )
 
 func main() {
@@ -59,16 +61,19 @@ func main() {
 		logrus.Fatal(err)
 	}
 
+	handlers := make(map[string]backend.Handler)
+	handlers["/v1/logs/"] = &logs.LogsHandler{}
+	backend.ConnectToProxy("ws://10.0.2.2:9345/connectbackend", "1", handlers)
+
 	router := mux.NewRouter()
 	http.Handle("/", auth.AuthHttpInterceptor(router))
 
 	router.Handle("/v1/stats", common.ErrorHandler(stats.GetStats)).Methods("GET")
 	router.Handle("/v1/stats/{id}", common.ErrorHandler(stats.GetStats)).Methods("GET")
-	router.Handle("/v1/logs/", common.ErrorHandler(logs.GetLogs)).Methods("GET")
+	//router.Handle("/v1/logs/", common.ErrorHandler(logs.GetLogs)).Methods("GET")
 
 	var listen = fmt.Sprintf("%s:%d", config.Config.Ip, config.Config.Port)
 	err = http.ListenAndServe(listen, nil)
-
 	if err != nil {
 		logrus.Fatal(err)
 	}
