@@ -5,13 +5,13 @@ import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/rancherio/host-api/app/common/connect"
 	"github.com/rancherio/host-api/auth"
-	"github.com/rancherio/host-api/config"
 	"net/http"
 	"strconv"
+
+	"github.com/rancherio/host-api/events"
 )
 
 func GetLogs(rw http.ResponseWriter, req *http.Request) error {
-
 	token := auth.GetToken(req)
 
 	if token == nil {
@@ -35,14 +35,13 @@ func GetLogs(rw http.ResponseWriter, req *http.Request) error {
 		tail = "100"
 	}
 
-	client, err := dockerClient.NewClient(config.Config.DockerUrl)
+	client, err := events.NewDockerClient()
 
 	if err != nil {
 		return err
 	}
 
 	conn, err := connect.GetConnection(rw, req)
-
 	if err != nil {
 		return err
 	}
