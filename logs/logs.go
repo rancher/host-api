@@ -24,8 +24,6 @@ type LogsHandler struct {
 func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
 	defer backend.SignalHandlerClosed(key, response)
 
-	log.Info("In the logger.")
-
 	requestUrl, err := url.Parse(initialMessage)
 	if err != nil {
 		log.Error("Problem parsing url [%v] [%v]", requestUrl, err)
@@ -60,7 +58,6 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 		return
 	}
 
-	//_, writer := io.Pipe()
 	reader, writer := io.Pipe()
 
 	containerRef, err := client.InspectContainer(container)
@@ -85,7 +82,7 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 		logopts.RawTerminal = false
 	}
 
-	go func(r *io.PipeReader, w *io.PipeWriter) {
+	go func(w *io.PipeWriter) {
 		for {
 			_, ok := <-incomingMessages
 			if !ok {
@@ -94,13 +91,12 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 				return
 			}
 		}
-	}(reader, writer)
+	}(writer)
 
 	go func(r *io.PipeReader) {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			text := scanner.Text()
-			log.Infof("Sending log: [%v]", text)
 			message := common.Message{
 				Key:  key,
 				Type: common.Body,
@@ -111,13 +107,8 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 		if err := scanner.Err(); err != nil {
 			log.Errorf("Error with the container log scanner.", err)
 		}
-		log.Info("Leaving the scanner.")
 	}(reader)
 
-	err = client.Logs(logopts)
-	if err != nil {
-		log.Errorf("Problem getting logs for container [%v]", err)
-		return
-	}
-	log.Info("Leaving the method.")
+	// Returns an error, but ignoring it because it will always return an error when a streaming call is made.
+	client.Logs(logopts)
 }
