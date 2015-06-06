@@ -2,15 +2,11 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancherio/host-api/app/common"
-	"github.com/rancherio/host-api/auth"
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/host-api/events"
 	"github.com/rancherio/host-api/healthcheck"
@@ -18,7 +14,6 @@ import (
 	"github.com/rancherio/host-api/stats"
 
 	"github.com/golang/glog"
-	"github.com/gorilla/mux"
 
 	"github.com/rancherio/websocket-proxy/backend"
 )
@@ -63,18 +58,6 @@ func main() {
 
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}
+	handlers["/v1/stats/"] = &stats.StatsHandler{}
 	backend.ConnectToProxy("ws://10.0.2.2:9345/connectbackend", "1", handlers)
-
-	router := mux.NewRouter()
-	http.Handle("/", auth.AuthHttpInterceptor(router))
-
-	router.Handle("/v1/stats", common.ErrorHandler(stats.GetStats)).Methods("GET")
-	router.Handle("/v1/stats/{id}", common.ErrorHandler(stats.GetStats)).Methods("GET")
-	//router.Handle("/v1/logs/", common.ErrorHandler(logs.GetLogs)).Methods("GET")
-
-	var listen = fmt.Sprintf("%s:%d", config.Config.Ip, config.Config.Port)
-	err = http.ListenAndServe(listen, nil)
-	if err != nil {
-		logrus.Fatal(err)
-	}
 }
