@@ -55,33 +55,45 @@ func TestBackendGoesAway(t *testing.T) {
 // Simple unit test for asserting the GetHandler algorithm
 func TestGetHandler(t *testing.T) {
 	handlers := map[string]Handler{}
-	h := &mockHandler{}
-	handlers["/v1/logs/"] = h
+	logKey := "/v1/logs/"
+	statKey := "/v1/stats/"
+	handlers[logKey] = &mockHandler{hType: logKey}
+	handlers[statKey] = &mockHandler{hType: statKey}
 
-	if _, ok := getHandler("/v1/logs/", handlers); !ok {
-		t.Fatal("Didn't find handler")
+	if !assertHandler("/v1/logs", logKey, handlers, t) {
+		t.Fatal("Bad handler")
 	}
-	if _, ok := getHandler("/v1/logs", handlers); !ok {
-		t.Fatal("Didn't find handler")
+	if !assertHandler("/v1/logs/", logKey, handlers, t) {
+		t.Fatal("Bad handler")
 	}
-
-	handlers = map[string]Handler{}
-	handlers["/v1/stats/"] = h
-	if _, ok := getHandler("/v1/stats/", handlers); !ok {
-		t.Fatal("Didn't find handler")
+	if !assertHandler("/v1/stats/", statKey, handlers, t) {
+		t.Fatal("Bad handler")
 	}
-	if _, ok := getHandler("/v1/stats", handlers); !ok {
-		t.Fatal("Didn't find handler")
+	if !assertHandler("/v1/stats", statKey, handlers, t) {
+		t.Fatal("Bad handler")
 	}
-	if _, ok := getHandler("/v1/stats/1234", handlers); !ok {
-		t.Fatal("Didn't find handler")
+	if !assertHandler("/v1/stats/1234", statKey, handlers, t) {
+		t.Fatal("Bad handler")
 	}
-	if _, ok := getHandler("/v1/stats/1234/", handlers); !ok {
-		t.Fatal("Didn't find handler")
+	if !assertHandler("/v1/stats/1234/", statKey, handlers, t) {
+		t.Fatal("Bad handler")
+	}
+	if assertHandler("/v1/foo", statKey, handlers, t) {
+		t.Fatal("Bad handler")
 	}
 }
 
+func assertHandler(path string, expectedType string, handlers map[string]Handler, t *testing.T) bool {
+	if h, ok := getHandler(path, handlers); ok {
+		if mh, yes := h.(*mockHandler); yes && mh.hType == expectedType {
+			return true
+		}
+	}
+	return false
+}
+
 type mockHandler struct {
+	hType string
 }
 
 func (h *mockHandler) Handle(messageKey string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {

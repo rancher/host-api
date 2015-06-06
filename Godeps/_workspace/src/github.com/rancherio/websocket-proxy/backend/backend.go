@@ -111,9 +111,8 @@ func getHandler(path string, handlers map[string]Handler) (Handler, bool) {
 	}
 
 	path = strings.TrimSuffix(path, "/")
-
 	for key, handler := range handlers {
-		key = strings.TrimSuffix(path, "/")
+		key = strings.TrimSuffix(key, "/")
 		if strings.HasPrefix(path, key) {
 			return handler, true
 		}
