@@ -62,7 +62,6 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		for {
 			_, ok := <-incomingMessages
 			if !ok {
-				log.Info("Incoming message channel closed. Exiting.")
 				w.Close()
 				return
 			}
@@ -81,7 +80,7 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 			response <- message
 		}
 		if err := scanner.Err(); err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Error with the container log scanner.")
+			log.WithFields(log.Fields{"error": err}).Error("Error with the container stat scanner.")
 		}
 	}(reader)
 
@@ -124,6 +123,7 @@ func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) erro
 		}
 
 		writer.Write(data)
+		writer.Write([]byte("\n"))
 	}
 
 	return nil

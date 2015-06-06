@@ -101,11 +101,11 @@
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/backend",
-			"Rev": "044cd713300ce7f698ff1ae3c7960eea6fd1cd56"
+			"Rev": "be624f9ca2c2b7e789756f650c198432952b0457"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/common",
-			"Rev": "044cd713300ce7f698ff1ae3c7960eea6fd1cd56"
+			"Rev": "be624f9ca2c2b7e789756f650c198432952b0457"
 		},
 		{
 			"ImportPath": "gopkg.in/fsnotify.v1",

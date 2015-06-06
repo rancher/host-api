@@ -59,5 +59,5 @@ func main() {
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}
 	handlers["/v1/stats/"] = &stats.StatsHandler{}
-	backend.ConnectToProxy("ws://10.0.2.2:9345/connectbackend", "1", handlers)
+	backend.ConnectToProxy("ws://10.0.2.2:9345/connectbackend", config.Config.HostUuid, handlers)
 }

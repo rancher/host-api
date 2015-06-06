@@ -26,13 +26,12 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 
 	requestUrl, err := url.Parse(initialMessage)
 	if err != nil {
-		log.Error("Problem parsing url [%v] [%v]", requestUrl, err)
+		log.WithFields(log.Fields{"error": err, "url": initialMessage}).Error("Couldn't parse url.")
 		return
 	}
 	tokenString := requestUrl.Query().Get("token")
 	token, valid := auth.GetAndCheckToken(tokenString)
 	if !valid {
-		log.Error("Token ins not valid [%v]", token)
 		return
 	}
 
@@ -54,7 +53,7 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 
 	client, err := events.NewDockerClient()
 	if err != nil {
-		log.Error("Problem getting docker client [%v]", err)
+		log.WithFields(log.Fields{"error": err}).Error("Couldn't get docker client.")
 		return
 	}
 
@@ -86,7 +85,6 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 		for {
 			_, ok := <-incomingMessages
 			if !ok {
-				log.Info("Incoming message channel closed. Exiting.")
 				w.Close()
 				return
 			}
@@ -105,7 +103,7 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 			response <- message
 		}
 		if err := scanner.Err(); err != nil {
-			log.Errorf("Error with the container log scanner.", err)
+			log.WithFields(log.Fields{"error": err}).Error("Error with the container log scanner.")
 		}
 	}(reader)
 
