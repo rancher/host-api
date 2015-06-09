@@ -12,9 +12,11 @@ import (
 	"github.com/rancherio/host-api/healthcheck"
 	"github.com/rancherio/host-api/logs"
 	"github.com/rancherio/host-api/stats"
+	"github.com/rancherio/host-api/util"
 
 	"github.com/golang/glog"
 
+	rclient "github.com/rancherio/go-rancher/client"
 	"github.com/rancherio/websocket-proxy/backend"
 )
 
@@ -56,8 +58,21 @@ func main() {
 		logrus.Fatal(err)
 	}
 
+	rancherClient, err := util.GetRancherClient()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	tokenRequest := &rclient.HostApiProxyToken{
+		ReportedUuid: config.Config.HostUuid,
+	}
+	tokenResponse, err := rancherClient.HostApiProxyToken.Create(tokenRequest)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}
 	handlers["/v1/stats/"] = &stats.StatsHandler{}
-	backend.ConnectToProxy("ws://10.0.2.2:9345/connectbackend", config.Config.HostUuid, handlers)
+	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, config.Config.HostUuid, handlers)
 }
