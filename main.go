@@ -9,6 +9,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/host-api/events"
+	"github.com/rancherio/host-api/exec"
 	"github.com/rancherio/host-api/healthcheck"
 	"github.com/rancherio/host-api/logs"
 	"github.com/rancherio/host-api/stats"
@@ -74,5 +75,6 @@ func main() {
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}
 	handlers["/v1/stats/"] = &stats.StatsHandler{}
+	handlers["/v1/exec/"] = &exec.ExecHandler{}
 	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, config.Config.HostUuid, handlers)
 }
