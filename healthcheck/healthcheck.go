@@ -92,6 +92,10 @@ func (m *Monitor) processStat(stat haproxy.Stat) {
 		currentStatus = "UP"
 	}
 
+	if currentStatus == "UP" && previousStatus != "UP" && previousStatus != "INIT" {
+		currentStatus = "INIT"
+	}
+
 	if previousStatus != currentStatus {
 		err := m.reportStatus(serverName, currentStatus)
 		if err != nil {
