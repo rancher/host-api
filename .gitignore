@@ -5,3 +5,6 @@ gopath
 
 *.swp
 build/
+
+.DS_Store
+watch-test/

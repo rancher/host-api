@@ -12,11 +12,11 @@ const (
 	defaultApiVersion = "1.18"
 )
 
-func NewDockerClient(useDockerConnectEnvVars bool) (*docker.Client, error) {
+func NewDockerClient() (*docker.Client, error) {
 	apiVersion := getenv("DOCKER_API_VERSION", defaultApiVersion)
 	endpoint := defaultUnixSocket
 
-	if useDockerConnectEnvVars {
+	if os.Getenv("CATTLE_DOCKER_USE_BOOT2DOCKER") == "true" {
 		endpoint = os.Getenv("DOCKER_HOST")
 		certPath := os.Getenv("DOCKER_CERT_PATH")
 		tlsVerify := os.Getenv("DOCKER_TLS_VERIFY") != ""

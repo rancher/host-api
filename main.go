@@ -2,23 +2,23 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancherio/host-api/app/common"
-	"github.com/rancherio/host-api/auth"
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/host-api/events"
+	"github.com/rancherio/host-api/exec"
 	"github.com/rancherio/host-api/healthcheck"
 	"github.com/rancherio/host-api/logs"
 	"github.com/rancherio/host-api/stats"
+	"github.com/rancherio/host-api/util"
 
 	"github.com/golang/glog"
-	"github.com/gorilla/mux"
+
+	rclient "github.com/rancherio/go-rancher/client"
+	"github.com/rancherio/websocket-proxy/backend"
 )
 
 func main() {
@@ -59,17 +59,22 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	router := mux.NewRouter()
-	http.Handle("/", auth.AuthHttpInterceptor(router))
-
-	router.Handle("/v1/stats", common.ErrorHandler(stats.GetStats)).Methods("GET")
-	router.Handle("/v1/stats/{id}", common.ErrorHandler(stats.GetStats)).Methods("GET")
-	router.Handle("/v1/logs/", common.ErrorHandler(logs.GetLogs)).Methods("GET")
-
-	var listen = fmt.Sprintf("%s:%d", config.Config.Ip, config.Config.Port)
-	err = http.ListenAndServe(listen, nil)
-
+	rancherClient, err := util.GetRancherClient()
 	if err != nil {
 		logrus.Fatal(err)
 	}
+
+	tokenRequest := &rclient.HostApiProxyToken{
+		ReportedUuid: config.Config.HostUuid,
+	}
+	tokenResponse, err := rancherClient.HostApiProxyToken.Create(tokenRequest)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	handlers := make(map[string]backend.Handler)
+	handlers["/v1/logs/"] = &logs.LogsHandler{}
+	handlers["/v1/stats/"] = &stats.StatsHandler{}
+	handlers["/v1/exec/"] = &exec.ExecHandler{}
+	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, config.Config.HostUuid, handlers)
 }

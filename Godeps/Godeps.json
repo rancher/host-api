@@ -97,7 +97,16 @@
 		},
 		{
 			"ImportPath": "github.com/rancherio/go-rancher/client",
-			"Rev": "129c390e42e18f4b850a2e7af3d1a6eb22859fca"
+			"Comment": "v0.1.0-39-gdcfc74f",
+			"Rev": "dcfc74fc3e50ce686faf0750f2abc0427a1a7f68"
+		},
+		{
+			"ImportPath": "github.com/rancherio/websocket-proxy/backend",
+			"Rev": "be624f9ca2c2b7e789756f650c198432952b0457"
+		},
+		{
+			"ImportPath": "github.com/rancherio/websocket-proxy/common",
+			"Rev": "be624f9ca2c2b7e789756f650c198432952b0457"
 		},
 		{
 			"ImportPath": "gopkg.in/fsnotify.v1",
