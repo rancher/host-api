@@ -89,7 +89,8 @@ func (m *Monitor) processStat(stat haproxy.Stat) {
 
 	previousStatus := m.reportedStatus[serverName]
 	if strings.HasPrefix(currentStatus, "UP ") {
-		currentStatus = "UP"
+		// do nothing on partial UP
+		return
 	}
 
 	if currentStatus == "UP" && previousStatus != "UP" && previousStatus != "INIT" {
