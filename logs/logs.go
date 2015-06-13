@@ -1,21 +1,38 @@
 package logs
 
 import (
-	"errors"
-	dockerClient "github.com/fsouza/go-dockerclient"
-	"github.com/rancherio/host-api/app/common/connect"
-	"github.com/rancherio/host-api/auth"
-	"github.com/rancherio/host-api/config"
-	"net/http"
+	"bufio"
+	"io"
+	"net/url"
 	"strconv"
+	_ "time"
+
+	log "github.com/Sirupsen/logrus"
+	dockerClient "github.com/fsouza/go-dockerclient"
+
+	"github.com/rancherio/websocket-proxy/backend"
+	"github.com/rancherio/websocket-proxy/common"
+
+	// "github.com/rancherio/host-api/app/common/connect"
+	"github.com/rancherio/host-api/auth"
+	"github.com/rancherio/host-api/events"
 )
 
-func GetLogs(rw http.ResponseWriter, req *http.Request) error {
+type LogsHandler struct {
+}
 
-	token := auth.GetToken(req)
+func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
+	defer backend.SignalHandlerClosed(key, response)
 
-	if token == nil {
-		return errors.New("No token stored in context.")
+	requestUrl, err := url.Parse(initialMessage)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "url": initialMessage}).Error("Couldn't parse url.")
+		return
+	}
+	tokenString := requestUrl.Query().Get("token")
+	token, valid := auth.GetAndCheckToken(tokenString)
+	if !valid {
+		return
 	}
 
 	logs := token.Claims["logs"].(map[string]interface{})
@@ -28,56 +45,68 @@ func GetLogs(rw http.ResponseWriter, req *http.Request) error {
 
 	tailTemp, found := logs["Lines"].(int)
 	var tail string
-
 	if found {
 		tail = strconv.Itoa(int(tailTemp))
 	} else {
 		tail = "100"
 	}
 
-	client, err := dockerClient.NewClient(config.Config.DockerUrl)
-
+	client, err := events.NewDockerClient()
 	if err != nil {
-		return err
+		log.WithFields(log.Fields{"error": err}).Error("Couldn't get docker client.")
+		return
 	}
 
-	conn, err := connect.GetConnection(rw, req)
+	reader, writer := io.Pipe()
 
-	if err != nil {
-		return err
-	}
-	logOut := stdoutWriter{conn}
-	logError := stderrorWriter{conn}
-	logBoth := stdbothWriter{conn}
 	containerRef, err := client.InspectContainer(container)
 	if err != nil {
-		return err
+		return
 	}
 
-	if containerRef.Config.Tty == true {
-		logopts := dockerClient.LogsOptions{
-			Container:    container,
-			OutputStream: logBoth,
-			Follow:       follow,
-			Stdout:       true,
-			Stderr:       true,
-			Timestamps:   true,
-			Tail:         tail,
-			RawTerminal:  true,
-		}
-		return client.Logs(logopts)
-	} else {
-		logopts := dockerClient.LogsOptions{
-			Container:    container,
-			OutputStream: logOut,
-			ErrorStream:  logError,
-			Follow:       follow,
-			Stdout:       true,
-			Stderr:       true,
-			Timestamps:   true,
-			Tail:         tail,
-			RawTerminal:  false,
-		}
-		return client.Logs(logopts)
+	logopts := dockerClient.LogsOptions{
+		Container:  container,
+		Follow:     follow,
+		Stdout:     true,
+		Stderr:     true,
+		Timestamps: true,
+		Tail:       tail,
 	}
+	if containerRef.Config.Tty {
+		logopts.OutputStream = stdbothWriter{writer}
+		logopts.RawTerminal = true
+	} else {
+		logopts.OutputStream = stdoutWriter{writer}
+		logopts.ErrorStream = stderrorWriter{writer}
+		logopts.RawTerminal = false
+	}
+
+	go func(w *io.PipeWriter) {
+		for {
+			_, ok := <-incomingMessages
+			if !ok {
+				w.Close()
+				return
+			}
+		}
+	}(writer)
+
+	go func(r *io.PipeReader) {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			text := scanner.Text()
+			message := common.Message{
+				Key:  key,
+				Type: common.Body,
+				Body: text,
+			}
+			response <- message
+		}
+		if err := scanner.Err(); err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Error with the container log scanner.")
+		}
+	}(reader)
+
+	// Returns an error, but ignoring it because it will always return an error when a streaming call is made.
+	client.Logs(logopts)
 }

@@ -10,9 +10,7 @@ import (
 func TestProcessDockerEvents(t *testing.T) {
 	processor := NewDockerEventsProcessor(10)
 
-	// Test-friendly docker client
-	useEnvVars := useEnvVars()
-	dockerClient, err := NewDockerClient(useEnvVars)
+	dockerClient, err := NewDockerClient()
 	if err != nil {
 		t.Fatal(err)
 	}
