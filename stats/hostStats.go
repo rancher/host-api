@@ -2,43 +2,23 @@ package stats
 
 import (
 	"bufio"
-	"encoding/json"
 	"io"
-	"net/url"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/google/cadvisor/client"
 	info "github.com/google/cadvisor/info/v1"
 
-	"github.com/google/cadvisor/client"
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/websocket-proxy/backend"
 	"github.com/rancherio/websocket-proxy/common"
 )
 
-type StatsHandler struct {
+type HostStatsHandler struct {
 }
 
-func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
+func (s *HostStatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
 	defer backend.SignalHandlerClosed(key, response)
-
-	requestUrl, err := url.Parse(initialMessage)
-	if err != nil {
-		log.WithFields(log.Fields{"error": err, "message": initialMessage}).Error("Couldn't parse url from message.")
-		return
-	}
-
-	id := ""
-	parts := pathParts(requestUrl.Path)
-	if len(parts) == 3 {
-		id = parts[2]
-	}
-
-	container, err := resolveContainer(id)
-	if err != nil {
-		log.WithFields(log.Fields{"id": id, "error": err}).Error("Couldn't find container for id.")
-		return
-	}
 
 	c, err := client.NewClient(config.Config.CAdvisorUrl)
 	if err != nil {
@@ -85,14 +65,18 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 
 		memLimit := machineInfo.MemoryCapacity
 
-		info, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
+		infos := []info.ContainerInfo{}
+
+		cInfo, err := c.ContainerInfo("", &info.ContainerInfoRequest{
 			NumStats: count,
 		})
 		if err != nil {
 			return
 		}
 
-		err = writeStats(info, memLimit, writer)
+		infos = append(infos, *cInfo)
+
+		err = writeAggregatedStats(infos, uint64(memLimit), writer)
 		if err != nil {
 			return
 		}
@@ -102,18 +86,4 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 	}
 
 	return
-}
-
-func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) error {
-	for _, stat := range info.Stats {
-		data, err := json.Marshal(stat)
-		if err != nil {
-			return err
-		}
-
-		writer.Write(data)
-		writer.Write([]byte("\n"))
-	}
-
-	return nil
 }

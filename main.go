@@ -83,6 +83,8 @@ func main() {
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}
 	handlers["/v1/stats/"] = &stats.StatsHandler{}
+	handlers["/v1/hostStats/"] = &stats.HostStatsHandler{}
+	handlers["/v1/containerStats/"] = &stats.ContainerStatsHandler{}
 	handlers["/v1/exec/"] = &exec.ExecHandler{}
 	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, config.Config.HostUuid, handlers)
 }
