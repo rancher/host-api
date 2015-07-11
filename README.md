@@ -10,9 +10,9 @@ is mostly intended to be internal and publically consumed.
     
 # Contact
 For bugs, questions, comments, corrections, suggestions, etc., open an issue in
- [rancherio/rancher](//github.com/rancherio/rancher/issues) with a title starting with `[Host-API] `.
+ [rancher/rancher](//github.com/rancher/rancher/issues) with a title starting with `[Host-API] `.
 
-Or just [click here](//github.com/rancherio/rancher/issues/new?title=%5BHost-API%5D%20) to create a new issue.
+Or just [click here](//github.com/rancher/rancher/issues/new?title=%5BHost-API%5D%20) to create a new issue.
 
 # License
 Copyright (c) 2014-2015 [Rancher Labs, Inc.](http://rancher.com)
