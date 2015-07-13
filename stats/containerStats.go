@@ -27,6 +27,25 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		return
 	}
 
+	tokenString := requestUrl.Query().Get("token")
+
+	containerIds := map[string]string{}
+
+	token, err := parseRequestToken(tokenString, config.Config.ParsedPublicKey)
+	if err == nil {
+		containerIdsInterface, found := token.Claims["containerIdsMap"]
+		if found {
+			containerIdsVal, ok := containerIdsInterface.(map[string]interface{})
+			if ok {
+				for key, val := range containerIdsVal {
+					if containerIdsValString, ok := val.(string); ok {
+						containerIds[key] = containerIdsValString
+					}
+				}
+			}
+		}
+	}
+
 	id := ""
 	parts := pathParts(requestUrl.Path)
 	if len(parts) == 3 {
@@ -104,7 +123,7 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 			infos = append(infos, cInfos...)
 		}
 
-		err = writeAggregatedStats(infos, uint64(memLimit), writer)
+		err = writeAggregatedStats(id, containerIds, "container", infos, uint64(memLimit), writer)
 		if err != nil {
 			return
 		}

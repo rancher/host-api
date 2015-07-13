@@ -3,6 +3,7 @@ package stats
 import (
 	"bufio"
 	"io"
+	"net/url"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -24,6 +25,27 @@ func (s *HostStatsHandler) Handle(key string, initialMessage string, incomingMes
 	if err != nil {
 		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
 		return
+	}
+
+	requestUrl, err := url.Parse(initialMessage)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "message": initialMessage}).Error("Couldn't parse url from message.")
+		return
+	}
+
+	tokenString := requestUrl.Query().Get("token")
+
+	resourceId := ""
+
+	token, err := parseRequestToken(tokenString, config.Config.ParsedPublicKey)
+	if err == nil {
+		resourceIdInterface, found := token.Claims["resourceId"]
+		if found {
+			resourceIdVal, ok := resourceIdInterface.(string)
+			if ok {
+				resourceId = resourceIdVal
+			}
+		}
 	}
 
 	reader, writer := io.Pipe()
@@ -76,7 +98,7 @@ func (s *HostStatsHandler) Handle(key string, initialMessage string, incomingMes
 
 		infos = append(infos, *cInfo)
 
-		err = writeAggregatedStats(infos, uint64(memLimit), writer)
+		err = writeAggregatedStats(resourceId, nil, "host", infos, uint64(memLimit), writer)
 		if err != nil {
 			return
 		}

@@ -10,11 +10,12 @@ import (
 type AggregatedStats []AggregatedStat
 
 type AggregatedStat struct {
-	Id string `json:"id,omitempty"`
+	Id           string `json:"id,omitempty"`
+	ResourceType string `json:"resourceType,omitempty"`
 	*info.ContainerStats
 }
 
-func convertToAggregatedStats(stats []info.ContainerInfo, memLimit uint64) []AggregatedStats {
+func convertToAggregatedStats(id string, containerIds map[string]string, resourceType string, stats []info.ContainerInfo, memLimit uint64) []AggregatedStats {
 	maxDataPoints := len(stats[0].Stats)
 	totalAggregatedStats := []AggregatedStats{}
 
@@ -22,7 +23,13 @@ func convertToAggregatedStats(stats []info.ContainerInfo, memLimit uint64) []Agg
 		aggregatedStats := []AggregatedStat{}
 		for _, stat := range stats {
 			if len(stat.Stats) > i {
-				statPoint := convertCadvisorStatToAggregatedStat(stat.Name, memLimit, stat.Stats[i])
+				if resourceType == "container" && id == "" {
+					id = stat.Name
+				}
+				statPoint := convertCadvisorStatToAggregatedStat(id, containerIds, resourceType, memLimit, stat.Stats[i])
+				if statPoint.Id == "" {
+					return totalAggregatedStats
+				}
 				aggregatedStats = append(aggregatedStats, statPoint)
 			}
 		}
@@ -31,28 +38,37 @@ func convertToAggregatedStats(stats []info.ContainerInfo, memLimit uint64) []Agg
 	return totalAggregatedStats
 }
 
-func convertCadvisorStatToAggregatedStat(id string, memLimit uint64, stat *info.ContainerStats) AggregatedStat {
-	aggregatedStat := AggregatedStat{}
-	aggregatedStat.Id = id
-	aggregatedStat.Timestamp = stat.Timestamp
-	aggregatedStat.Cpu = stat.Cpu
-	aggregatedStat.DiskIo = stat.DiskIo
-	aggregatedStat.Memory = stat.Memory
-	aggregatedStat.Network = stat.Network
-	aggregatedStat.Filesystem = stat.Filesystem
-	return aggregatedStat
+func convertCadvisorStatToAggregatedStat(id string, containerIds map[string]string, resourceType string, memLimit uint64, stat *info.ContainerStats) AggregatedStat {
+	if resourceType == "container" {
+		if id[:len("/docker/")] == "/docker/" {
+			id = id[len("/docker/"):]
+		}
+		if idVal, ok := containerIds[id]; ok {
+			id = idVal
+		} else {
+			return AggregatedStat{}
+		}
+	}
+	return AggregatedStat{id, resourceType, stat}
 }
 
-func writeAggregatedStats(infos []info.ContainerInfo, memLimit uint64, writer io.Writer) error {
-	aggregatedStats := convertToAggregatedStats(infos, memLimit)
+func writeAggregatedStats(id string, containerIds map[string]string, resourceType string, infos []info.ContainerInfo, memLimit uint64, writer io.Writer) error {
+	aggregatedStats := convertToAggregatedStats(id, containerIds, resourceType, infos, memLimit)
 	for _, stat := range aggregatedStats {
+
 		data, err := json.Marshal(stat)
 		if err != nil {
 			return err
 		}
 
-		writer.Write(data)
-		writer.Write([]byte("\n"))
+		_, err = writer.Write(data)
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write([]byte("\n"))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

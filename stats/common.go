@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/rancherio/host-api/config"
 )
@@ -44,4 +45,14 @@ func useSystemd() bool {
 	}
 
 	return true
+}
+
+func parseRequestToken(tokenString string, parsedPublicKey interface{}) (*jwt.Token, error) {
+	if tokenString == "" {
+		return nil, fmt.Errorf("No JWT token provided")
+	}
+
+	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return parsedPublicKey, nil
+	})
 }
