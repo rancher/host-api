@@ -33,7 +33,7 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 
 	token, err := parseRequestToken(tokenString, config.Config.ParsedPublicKey)
 	if err == nil {
-		containerIdsInterface, found := token.Claims["containerIdsMap"]
+		containerIdsInterface, found := token.Claims["containerIds"]
 		if found {
 			containerIdsVal, ok := containerIdsInterface.(map[string]interface{})
 			if ok {

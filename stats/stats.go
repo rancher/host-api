@@ -100,7 +100,6 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		time.Sleep(1 * time.Second)
 		count = 1
 	}
-
 	return
 }
 
@@ -111,9 +110,15 @@ func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) erro
 			return err
 		}
 
-		writer.Write(data)
-		writer.Write([]byte("\n"))
-	}
+		_, err = writer.Write(data)
+		if err != nil {
+			return err
+		}
 
+		_, err = writer.Write([]byte("\n"))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
