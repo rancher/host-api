@@ -188,6 +188,7 @@ func monitorHealth(healthCheckChannel <-chan fsnotify.Event, failedCheck chan<- 
 		lastCheck := time.Now()
 		select {
 		case <-healthCheckChannel:
+			lastCheck = time.Now()
 		case <-timer.C:
 			now := time.Now()
 			sinceLastCheck := now.Sub(lastCheck)
