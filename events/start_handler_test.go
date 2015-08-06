@@ -55,7 +55,7 @@ func assertIpInject(injectedIp string, c *docker.Container, dockerClient *docker
 		t.Fatal(err)
 	}
 
-	ok, err := assertHasIp(injectedIp, c, dockerClient)
+	ok, err := assertCheckCmdOutput(injectedIp, c, dockerClient, []string{"ip", "addr", "show", "eth0"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestIpFromFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ok, err := assertHasIp(injectedIp, c, dockerClient)
+	ok, err := assertCheckCmdOutput(injectedIp, c, dockerClient, []string{"ip", "addr", "show", "eth0"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,6 +197,48 @@ func TestIpFromFileFailure(t *testing.T) {
 	}
 }
 
+func TestDnsWithLabel(t *testing.T) {
+	dockerClient := prep(t)
+	injectedIp := ""
+	labels := make(map[string]string)
+	labels["io.rancher.container.dns"] = "true"
+	c, err := createTestContainer(dockerClient, injectedIp, labels, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+
+	assertIpInject(injectedIp, c, dockerClient, t)
+
+	ok, err := assertCheckCmdOutput("169.254.169.250", c, dockerClient, []string{"cat", "/etc/resolv.conf"}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("Dns wasn't set with label directive.")
+	}
+}
+
+func TestDnsWithoutLabel(t *testing.T) {
+	dockerClient := prep(t)
+	injectedIp := ""
+	c, err := createTestContainer(dockerClient, injectedIp, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+
+	assertIpInject(injectedIp, c, dockerClient, t)
+
+	ok, err := assertCheckCmdOutput("169.254.169.250", c, dockerClient, []string{"cat", "/etc/resolv.conf"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("Dns was reset with no label directive.")
+	}
+}
+
 func makeContainerFile(t *testing.T, id string, containerJson string) string {
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -211,13 +253,13 @@ func makeContainerFile(t *testing.T, id string, containerJson string) string {
 	return stateDir
 }
 
-func assertHasIp(injectedIp string, c *docker.Container, dockerClient *docker.Client) (bool, error) {
+func assertCheckCmdOutput(inputToCheck string, c *docker.Container, dockerClient *docker.Client, cmd []string, ifExists bool) (bool, error) {
 	createExecConf := docker.CreateExecOptions{
 		AttachStdin:  false,
 		AttachStdout: true,
 		AttachStderr: false,
 		Tty:          false,
-		Cmd:          []string{"ip", "addr", "show", "eth0"},
+		Cmd:          cmd,
 		Container:    c.ID,
 	}
 	createdExec, err := dockerClient.CreateExec(createExecConf)
@@ -247,13 +289,13 @@ func assertHasIp(injectedIp string, c *docker.Container, dockerClient *docker.Cl
 	}(reader)
 
 	timer := time.NewTimer(1 * time.Second)
-	foundIp := false
+	found := false
 	keepReading := true
 	for keepReading {
 		select {
 		case line := <-lines:
-			if strings.Contains(line, injectedIp) {
-				foundIp = true
+			if strings.Contains(line, inputToCheck) == ifExists {
+				found = true
 				keepReading = false
 				break
 			}
@@ -263,5 +305,5 @@ func assertHasIp(injectedIp string, c *docker.Container, dockerClient *docker.Cl
 		}
 	}
 
-	return foundIp, nil
+	return found, nil
 }

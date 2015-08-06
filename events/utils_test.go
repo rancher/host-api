@@ -17,16 +17,28 @@ func createContainer(client *docker.Client) (*docker.Container, error) {
 }
 
 func createNetTestContainerNoLabel(client *docker.Client, ip string) (*docker.Container, error) {
-	return createNetTestContainerInternal(client, ip, false)
+	return createTestContainerInternal(client, ip, false, nil, true)
 }
 
 func createNetTestContainer(client *docker.Client, ip string) (*docker.Container, error) {
-	return createNetTestContainerInternal(client, ip, true)
+	return createTestContainerInternal(client, ip, true, nil, true)
 }
 
-func createNetTestContainerInternal(client *docker.Client, ip string, useLabel bool) (*docker.Container, error) {
+func createTestContainer(client *docker.Client, ip string, labels map[string]string, isSystem bool) (*docker.Container, error) {
+	return createTestContainerInternal(client, ip, true, labels, isSystem)
+}
+
+func createTestContainerInternal(client *docker.Client, ip string, useLabel bool, inputLabels map[string]string, isSystem bool) (*docker.Container, error) {
 	labels := make(map[string]string)
-	labels["io.rancher.container.system"] = "FakeSysContainer"
+	if inputLabels != nil {
+		for k, v := range inputLabels {
+			labels[k] = v
+		}
+	}
+	if isSystem {
+		labels["io.rancher.container.system"] = "FakeSysContainer"
+	}
+
 	env := []string{}
 	if ip != "" {
 		if useLabel {
