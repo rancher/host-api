@@ -2,25 +2,30 @@ package stats
 
 import (
 	"bufio"
-	"encoding/json"
 	"io"
 	"net/url"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/google/cadvisor/client"
 	info "github.com/google/cadvisor/info/v1"
 
-	"github.com/google/cadvisor/client"
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/websocket-proxy/backend"
 	"github.com/rancherio/websocket-proxy/common"
 )
 
-type StatsHandler struct {
+type HostStatsHandler struct {
 }
 
-func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
+func (s *HostStatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
 	defer backend.SignalHandlerClosed(key, response)
+
+	c, err := client.NewClient(config.Config.CAdvisorUrl)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
+		return
+	}
 
 	requestUrl, err := url.Parse(initialMessage)
 	if err != nil {
@@ -28,22 +33,19 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		return
 	}
 
-	id := ""
-	parts := pathParts(requestUrl.Path)
-	if len(parts) == 3 {
-		id = parts[2]
-	}
+	tokenString := requestUrl.Query().Get("token")
 
-	container, err := resolveContainer(id)
-	if err != nil {
-		log.WithFields(log.Fields{"id": id, "error": err}).Error("Couldn't find container for id.")
-		return
-	}
+	resourceId := ""
 
-	c, err := client.NewClient(config.Config.CAdvisorUrl)
-	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
-		return
+	token, err := parseRequestToken(tokenString, config.Config.ParsedPublicKey)
+	if err == nil {
+		resourceIdInterface, found := token.Claims["resourceId"]
+		if found {
+			resourceIdVal, ok := resourceIdInterface.(string)
+			if ok {
+				resourceId = resourceIdVal
+			}
+		}
 	}
 
 	reader, writer := io.Pipe()
@@ -85,14 +87,18 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 
 		memLimit := machineInfo.MemoryCapacity
 
-		info, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
+		infos := []info.ContainerInfo{}
+
+		cInfo, err := c.ContainerInfo("", &info.ContainerInfoRequest{
 			NumStats: count,
 		})
 		if err != nil {
 			return
 		}
 
-		err = writeStats(info, memLimit, writer)
+		infos = append(infos, *cInfo)
+
+		err = writeAggregatedStats(resourceId, nil, "host", infos, uint64(memLimit), writer)
 		if err != nil {
 			return
 		}
@@ -100,25 +106,6 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		time.Sleep(1 * time.Second)
 		count = 1
 	}
+
 	return
-}
-
-func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) error {
-	for _, stat := range info.Stats {
-		data, err := json.Marshal(stat)
-		if err != nil {
-			return err
-		}
-
-		_, err = writer.Write(data)
-		if err != nil {
-			return err
-		}
-
-		_, err = writer.Write([]byte("\n"))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -2,30 +2,48 @@ package stats
 
 import (
 	"bufio"
-	"encoding/json"
 	"io"
 	"net/url"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/google/cadvisor/client"
 	info "github.com/google/cadvisor/info/v1"
 
-	"github.com/google/cadvisor/client"
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/websocket-proxy/backend"
 	"github.com/rancherio/websocket-proxy/common"
 )
 
-type StatsHandler struct {
+type ContainerStatsHandler struct {
 }
 
-func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
+func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
 	defer backend.SignalHandlerClosed(key, response)
 
 	requestUrl, err := url.Parse(initialMessage)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err, "message": initialMessage}).Error("Couldn't parse url from message.")
 		return
+	}
+
+	tokenString := requestUrl.Query().Get("token")
+
+	containerIds := map[string]string{}
+
+	token, err := parseRequestToken(tokenString, config.Config.ParsedPublicKey)
+	if err == nil {
+		containerIdsInterface, found := token.Claims["containerIds"]
+		if found {
+			containerIdsVal, ok := containerIdsInterface.(map[string]interface{})
+			if ok {
+				for key, val := range containerIdsVal {
+					if containerIdsValString, ok := val.(string); ok {
+						containerIds[key] = containerIdsValString
+					}
+				}
+			}
+		}
 	}
 
 	id := ""
@@ -85,14 +103,27 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 
 		memLimit := machineInfo.MemoryCapacity
 
-		info, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
-			NumStats: count,
-		})
-		if err != nil {
-			return
+		infos := []info.ContainerInfo{}
+
+		if container != "" {
+			cInfo, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
+				NumStats: count,
+			})
+			if err != nil {
+				return
+			}
+			infos = append(infos, *cInfo)
+		} else {
+			cInfos, err := c.AllDockerContainers(&info.ContainerInfoRequest{
+				NumStats: count,
+			})
+			if err != nil {
+				return
+			}
+			infos = append(infos, cInfos...)
 		}
 
-		err = writeStats(info, memLimit, writer)
+		err = writeAggregatedStats(id, containerIds, "container", infos, uint64(memLimit), writer)
 		if err != nil {
 			return
 		}
@@ -100,25 +131,6 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		time.Sleep(1 * time.Second)
 		count = 1
 	}
+
 	return
-}
-
-func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) error {
-	for _, stat := range info.Stats {
-		data, err := json.Marshal(stat)
-		if err != nil {
-			return err
-		}
-
-		_, err = writer.Write(data)
-		if err != nil {
-			return err
-		}
-
-		_, err = writer.Write([]byte("\n"))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -19,12 +19,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 
-	"github.com/google/cadvisor/info"
+	"github.com/golang/glog"
+	info "github.com/google/cadvisor/info/v1"
 )
 
 // Client represents the base URL for a cAdvisor client.
@@ -39,8 +41,29 @@ func NewClient(url string) (*Client, error) {
 	}
 
 	return &Client{
-		baseUrl: fmt.Sprintf("%sapi/v1.1/", url),
+		baseUrl: fmt.Sprintf("%sapi/v1.3/", url),
 	}, nil
+}
+
+// Returns all past events that satisfy the request
+func (self *Client) EventStaticInfo(name string) (einfo []*info.Event, err error) {
+	u := self.eventsInfoUrl(name)
+	ret := new([]*info.Event)
+	if err = self.httpGetJsonData(ret, nil, u, "event info"); err != nil {
+		return
+	}
+	einfo = *ret
+	return
+}
+
+// Streams all events that occur that satisfy the request into the channel
+// that is passed
+func (self *Client) EventStreamingInfo(name string, einfo chan *info.Event) (err error) {
+	u := self.eventsInfoUrl(name)
+	if err = self.getEventStreamingData(u, einfo); err != nil {
+		return
+	}
+	return nil
 }
 
 // MachineInfo returns the JSON machine information for this client.
@@ -80,6 +103,38 @@ func (self *Client) SubcontainersInfo(name string, query *info.ContainerInfoRequ
 	return response, nil
 }
 
+// Returns the JSON container information for the specified
+// Docker container and request.
+func (self *Client) DockerContainer(name string, query *info.ContainerInfoRequest) (cinfo info.ContainerInfo, err error) {
+	u := self.dockerInfoUrl(name)
+	ret := make(map[string]info.ContainerInfo)
+	if err = self.httpGetJsonData(&ret, query, u, fmt.Sprintf("Docker container info for %q", name)); err != nil {
+		return
+	}
+	if len(ret) != 1 {
+		err = fmt.Errorf("expected to only receive 1 Docker container: %+v", ret)
+		return
+	}
+	for _, cont := range ret {
+		cinfo = cont
+	}
+	return
+}
+
+// Returns the JSON container information for all Docker containers.
+func (self *Client) AllDockerContainers(query *info.ContainerInfoRequest) (cinfo []info.ContainerInfo, err error) {
+	u := self.dockerInfoUrl("/")
+	ret := make(map[string]info.ContainerInfo)
+	if err = self.httpGetJsonData(&ret, query, u, "all Docker containers info"); err != nil {
+		return
+	}
+	cinfo = make([]info.ContainerInfo, 0, len(ret))
+	for _, cont := range ret {
+		cinfo = append(cinfo, cont)
+	}
+	return
+}
+
 func (self *Client) machineInfoUrl() string {
 	return self.baseUrl + path.Join("machine")
 }
@@ -90,6 +145,14 @@ func (self *Client) containerInfoUrl(name string) string {
 
 func (self *Client) subcontainersInfoUrl(name string) string {
 	return self.baseUrl + path.Join("subcontainers", name)
+}
+
+func (self *Client) dockerInfoUrl(name string) string {
+	return self.baseUrl + path.Join("docker", name)
+}
+
+func (self *Client) eventsInfoUrl(name string) string {
+	return self.baseUrl + path.Join("events", name)
 }
 
 func (self *Client) httpGetJsonData(data, postData interface{}, url, infoName string) error {
@@ -106,18 +169,52 @@ func (self *Client) httpGetJsonData(data, postData interface{}, url, infoName st
 		resp, err = http.Get(url)
 	}
 	if err != nil {
-		err = fmt.Errorf("unable to get %v: %v", infoName, err)
-		return err
+		return fmt.Errorf("unable to get %q from %q: %v", infoName, url, err)
+	}
+	if resp == nil {
+		return fmt.Errorf("received empty response for %q from %q", infoName, url)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = fmt.Errorf("unable to read all %v: %v", infoName, err)
+		err = fmt.Errorf("unable to read all %q from %q: %v", infoName, url, err)
 		return err
 	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("request %q failed with error: %q", url, strings.TrimSpace(string(body)))
+	}
 	if err = json.Unmarshal(body, data); err != nil {
-		err = fmt.Errorf("unable to unmarshal %v (%v): %v", infoName, string(body), err)
+		err = fmt.Errorf("unable to unmarshal %q (Body: %q) from %q with error: %v", infoName, string(body), url, err)
 		return err
+	}
+	return nil
+}
+
+func (self *Client) getEventStreamingData(url string, einfo chan *info.Event) error {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Status code is not OK: %v (%s)", resp.StatusCode, resp.Status)
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	var m *info.Event = &info.Event{}
+	for {
+		err := dec.Decode(m)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			// if called without &stream=true will not be able to parse event and will trigger fatal
+			glog.Fatalf("Received error %v", err)
+		}
+		einfo <- m
 	}
 	return nil
 }
