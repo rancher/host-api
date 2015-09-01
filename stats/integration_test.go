@@ -76,6 +76,7 @@ func setupWebsocketProxy() {
 	handlers["/v1/hoststats/"] = &HostStatsHandler{}
 	handlers["/v1/containerstats/"] = &ContainerStatsHandler{}
 	go backend.ConnectToProxy("ws://localhost:1111/v1/connectbackend?token="+signedToken, handlers)
+	time.Sleep(300 * time.Millisecond)
 }
 
 func TestMain(m *testing.M) {
