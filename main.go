@@ -86,7 +86,7 @@ func main() {
 	handlers["/v1/hoststats/"] = &stats.HostStatsHandler{}
 	handlers["/v1/containerstats/"] = &stats.ContainerStatsHandler{}
 	handlers["/v1/exec/"] = &exec.ExecHandler{}
-	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, config.Config.HostUuid, handlers)
+	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, handlers)
 }
 
 const maxWaitOnHostTries = 20
