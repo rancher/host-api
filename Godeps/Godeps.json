@@ -110,23 +110,23 @@
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/backend",
-			"Comment": "v0.9.0-2-gaec1e4e",
-			"Rev": "aec1e4e345dbdfd4f1013802aad7d2b239c1b7a2"
+			"Comment": "v0.9.0-3-g4552e46",
+			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/common",
-			"Comment": "v0.9.0-2-gaec1e4e",
-			"Rev": "aec1e4e345dbdfd4f1013802aad7d2b239c1b7a2"
+			"Comment": "v0.9.0-3-g4552e46",
+			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/proxy",
-			"Comment": "v0.9.0-2-gaec1e4e",
-			"Rev": "aec1e4e345dbdfd4f1013802aad7d2b239c1b7a2"
+			"Comment": "v0.9.0-3-g4552e46",
+			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/test_utils",
-			"Comment": "v0.9.0-2-gaec1e4e",
-			"Rev": "aec1e4e345dbdfd4f1013802aad7d2b239c1b7a2"
+			"Comment": "v0.9.0-3-g4552e46",
+			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
 		},
 		{
 			"ImportPath": "gopkg.in/fsnotify.v1",

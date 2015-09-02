@@ -3,6 +3,7 @@ package stats
 import (
 	"encoding/json"
 	"io"
+	"strings"
 
 	info "github.com/google/cadvisor/info/v1"
 )
@@ -23,12 +24,9 @@ func convertToAggregatedStats(id string, containerIds map[string]string, resourc
 		aggregatedStats := []AggregatedStat{}
 		for _, stat := range stats {
 			if len(stat.Stats) > i {
-				if resourceType == "container" && id == "" {
-					id = stat.Name
-				}
-				statPoint := convertCadvisorStatToAggregatedStat(id, containerIds, resourceType, memLimit, stat.Stats[i])
+				statPoint := convertCadvisorStatToAggregatedStat(id, stat.Name, containerIds, resourceType, memLimit, stat.Stats[i])
 				if statPoint.Id == "" {
-					return totalAggregatedStats
+					continue
 				}
 				aggregatedStats = append(aggregatedStats, statPoint)
 			}
@@ -38,10 +36,15 @@ func convertToAggregatedStats(id string, containerIds map[string]string, resourc
 	return totalAggregatedStats
 }
 
-func convertCadvisorStatToAggregatedStat(id string, containerIds map[string]string, resourceType string, memLimit uint64, stat *info.ContainerStats) AggregatedStat {
+func convertCadvisorStatToAggregatedStat(id string, name string, containerIds map[string]string, resourceType string, memLimit uint64, stat *info.ContainerStats) AggregatedStat {
 	if resourceType == "container" {
-		if id[:len("/docker/")] == "/docker/" {
-			id = id[len("/docker/"):]
+		if id == "" {
+			id = name
+		}
+		//Use last index because in case of running this nested inside a docker container, then the container Id of the containers becomes /docker/id-root/docker/id-of-container
+		index := strings.LastIndex(id, "/docker/")
+		if index != -1 {
+			id = id[index+len("/docker/"):]
 		}
 		if idVal, ok := containerIds[id]; ok {
 			id = idVal
