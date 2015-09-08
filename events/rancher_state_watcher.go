@@ -51,7 +51,7 @@ func (w *rancherStateWatcher) watch() {
 	log.Infof("Watching state directory: %v", w.watchDir)
 	for {
 		if restarts >= w.maxRestarts {
-			panic("Unable to successfully start rancher state watcher.")
+			log.Fatal("Unable to successfully start rancher state watcher.")
 		}
 		if err := w.watchInternal(w.eventChannel, w.watchDir, w.healthCheckWriteInterval, w.healthCheckTimeout,
 			newWatcherFn, w.stopChannel); err != nil {
