@@ -13,6 +13,7 @@ type AggregatedStats []AggregatedStat
 type AggregatedStat struct {
 	Id           string `json:"id,omitempty"`
 	ResourceType string `json:"resourceType,omitempty"`
+	MemLimit     uint64 `json:"memLimit,omitempty"`
 	*info.ContainerStats
 }
 
@@ -62,7 +63,7 @@ func convertCadvisorStatToAggregatedStat(id string, aliases []string, name strin
 			}
 		}
 	}
-	return AggregatedStat{id, resourceType, stat}
+	return AggregatedStat{id, resourceType, memLimit, stat}
 }
 
 func writeAggregatedStats(id string, containerIds map[string]string, resourceType string, infos []info.ContainerInfo, memLimit uint64, writer io.Writer) error {
