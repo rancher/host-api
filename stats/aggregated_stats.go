@@ -24,7 +24,7 @@ func convertToAggregatedStats(id string, containerIds map[string]string, resourc
 		aggregatedStats := []AggregatedStat{}
 		for _, stat := range stats {
 			if len(stat.Stats) > i {
-				statPoint := convertCadvisorStatToAggregatedStat(id, stat.Name, containerIds, resourceType, memLimit, stat.Stats[i])
+				statPoint := convertCadvisorStatToAggregatedStat(id, stat.Aliases, stat.Name, containerIds, resourceType, memLimit, stat.Stats[i])
 				if statPoint.Id == "" {
 					continue
 				}
@@ -36,7 +36,7 @@ func convertToAggregatedStats(id string, containerIds map[string]string, resourc
 	return totalAggregatedStats
 }
 
-func convertCadvisorStatToAggregatedStat(id string, name string, containerIds map[string]string, resourceType string, memLimit uint64, stat *info.ContainerStats) AggregatedStat {
+func convertCadvisorStatToAggregatedStat(id string, aliases []string, name string, containerIds map[string]string, resourceType string, memLimit uint64, stat *info.ContainerStats) AggregatedStat {
 	if resourceType == "container" {
 		if id == "" {
 			id = name
@@ -49,7 +49,17 @@ func convertCadvisorStatToAggregatedStat(id string, name string, containerIds ma
 		if idVal, ok := containerIds[id]; ok {
 			id = idVal
 		} else {
-			return AggregatedStat{}
+			found := false
+			for _, alias := range aliases {
+				if idVal, ok := containerIds[alias]; ok {
+					id = idVal
+					found = true
+					break
+				}
+			}
+			if !found {
+				return AggregatedStat{}
+			}
 		}
 	}
 	return AggregatedStat{id, resourceType, stat}
