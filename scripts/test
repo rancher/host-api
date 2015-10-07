@@ -33,6 +33,8 @@ docker run \
   --name=cadvisor \
   google/cadvisor:latest --logtostderr 
 
+docker run -itd busybox /bin/sh
+
 go test ./...
 
 result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -l)
