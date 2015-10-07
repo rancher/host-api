@@ -4,6 +4,9 @@ import (
 	"io"
 )
 
+var messageSeparator = []byte("[RANLOGS]")
+var messageOffset = 3 + len(messageSeparator)
+
 type stdoutWriter struct {
 	writer io.Writer
 }
@@ -16,16 +19,22 @@ type stdbothWriter struct {
 }
 
 func (w stdoutWriter) Write(message []byte) (n int, err error) {
-	n, err = w.writer.Write(append([]byte("01 "), message...))
-	return n - 3, err
+	msg := append([]byte("01 "), message...)
+	msg = append(msg, messageSeparator...)
+	n, err = w.writer.Write(msg)
+	return n - messageOffset, err
 }
 
 func (w stderrorWriter) Write(message []byte) (n int, err error) {
-	n, err = w.writer.Write(append([]byte("02 "), message...))
-	return n - 3, err
+	msg := append([]byte("02 "), message...)
+	msg = append(msg, messageSeparator...)
+	n, err = w.writer.Write(msg)
+	return n - messageOffset, err
 }
 
 func (w stdbothWriter) Write(message []byte) (n int, err error) {
-	n, err = w.writer.Write(append([]byte("00 "), message...))
-	return n - 3, err
+	msg := append([]byte("00 "), message...)
+	msg = append(msg, messageSeparator...)
+	n, err = w.writer.Write(msg)
+	return n - messageOffset, err
 }
