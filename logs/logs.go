@@ -2,6 +2,7 @@ package logs
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"net/url"
 	"strconv"
@@ -73,6 +74,7 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 		Tail:       tail,
 	}
 	if containerRef.Config.Tty {
+		log.Infof("doing both!!!!!")
 		logopts.OutputStream = stdbothWriter{writer}
 		logopts.RawTerminal = true
 	} else {
@@ -93,6 +95,7 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 
 	go func(r *io.PipeReader) {
 		scanner := bufio.NewScanner(r)
+		scanner.Split(customSplit)
 		for scanner.Scan() {
 			text := scanner.Text()
 			message := common.Message{
@@ -109,4 +112,34 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 
 	// Returns an error, but ignoring it because it will always return an error when a streaming call is made.
 	client.Logs(logopts)
+}
+
+func dropCR(data []byte) []byte {
+	if len(data) > 0 && data[len(data)-1] == '\r' {
+		return data[0 : len(data)-1]
+	}
+	return data
+}
+
+func customSplit(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	if i := bytes.Index(data, messageSeparator); i >= 0 {
+		newData := data[0:i]
+		if bytes.HasSuffix(newData, []byte("\n")) {
+			newData = newData[0 : len(newData)-1]
+		}
+		return i + len(messageSeparator), dropCR(newData), nil
+	}
+
+	// If we're at EOF, we have a final, non-terminated line. Return it.
+	// TODO This isnt right
+	if atEOF {
+		return len(data), dropCR(data), nil
+	}
+
+	// Request more data.
+	return 0, nil, nil
 }
