@@ -59,13 +59,18 @@ func TestContainerStats(t *testing.T) {
 		t.Fatalf("Error inspecting container, err : [%v]", err)
 	}
 	log.Infof("%+v", newCtr)
-	ctrs, err := c.ListContainers(client.ListContainersOptions{
-		Filters: map[string][]string{
-			"image": []string{"google/cadvisor"},
-		},
-	})
-	if err != nil || len(ctrs) != 2 {
+	allCtrs, err := c.ListContainers(client.ListContainersOptions{})
+	if err != nil {
 		t.Fatalf("Error listing all images, err : [%v]", err)
+	}
+	ctrs := []client.APIContainers{}
+	for _, ctr := range allCtrs {
+		if strings.HasPrefix(ctr.Image, "google/cadvisor") {
+			ctrs = append(ctrs, ctr)
+		}
+	}
+	if len(ctrs) != 2 {
+		t.Fatalf("Expected 2 containers, but got %v: [%v]", len(ctrs), ctrs)
 	}
 
 	cIds := map[string]string{}

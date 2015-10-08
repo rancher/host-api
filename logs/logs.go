@@ -2,6 +2,7 @@ package logs
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"net/url"
 	"strconv"
@@ -93,6 +94,7 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 
 	go func(r *io.PipeReader) {
 		scanner := bufio.NewScanner(r)
+		scanner.Split(customSplit)
 		for scanner.Scan() {
 			text := scanner.Text()
 			message := common.Message{
@@ -109,4 +111,20 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 
 	// Returns an error, but ignoring it because it will always return an error when a streaming call is made.
 	client.Logs(logopts)
+}
+
+func customSplit(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	if i := bytes.Index(data, messageSeparator); i >= 0 {
+		return i + messageSeparatorLength, data[0:i], nil
+	}
+
+	if atEOF {
+		return len(data), data, nil
+	}
+
+	return 0, nil, nil
 }
