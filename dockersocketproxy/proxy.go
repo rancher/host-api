@@ -63,9 +63,9 @@ func (s *Handler) Handle(key string, initialMessage string, incomingMessages <-c
 
 	for {
 		buff := make([]byte, 1024)
-		n, err := conn.Read(buff[:])
-		if n > 0 {
-			text := base64.StdEncoding.EncodeToString(buff)
+		n, err := conn.Read(buff)
+		if n > 0 && err == nil {
+			text := base64.StdEncoding.EncodeToString(buff[:n])
 			message := common.Message{
 				Key:  key,
 				Type: common.Body,
