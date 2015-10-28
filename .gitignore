@@ -3,7 +3,7 @@ host-api
 dist
 gopath
 
-*.swp
+*.sw[mnop]
 build/
 
 .DS_Store
