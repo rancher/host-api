@@ -52,7 +52,6 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		id = parts[2]
 	}
 
-	container, err := resolveContainer(id)
 	if err != nil {
 		log.WithFields(log.Fields{"id": id, "error": err}).Error("Couldn't find container for id.")
 		return
@@ -105,11 +104,10 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 
 		infos := []info.ContainerInfo{}
 
-		if container != "" {
-			cInfo, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
-				NumStats: count,
-			})
+		if id != "" {
+			cInfo, err := getContainerStats(c, count, id)
 			if err != nil {
+				log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting container info.")
 				return
 			}
 			infos = append(infos, *cInfo)
@@ -118,6 +116,7 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 				NumStats: count,
 			})
 			if err != nil {
+				log.WithFields(log.Fields{"error": err}).Error("Error getting all container info.")
 				return
 			}
 			infos = append(infos, cInfos...)

@@ -34,12 +34,6 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		id = parts[2]
 	}
 
-	container, err := resolveContainer(id)
-	if err != nil {
-		log.WithFields(log.Fields{"id": id, "error": err}).Error("Couldn't find container for id.")
-		return
-	}
-
 	c, err := client.NewClient(config.Config.CAdvisorUrl)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
@@ -85,15 +79,12 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 
 		memLimit := machineInfo.MemoryCapacity
 
-		info, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
-			NumStats: count,
-		})
+		containerInfo, err := getContainerStats(c, count, id)
 		if err != nil {
 			return
 		}
 
-		err = writeStats(info, memLimit, writer)
-		if err != nil {
+		if err := writeStats(containerInfo, memLimit, writer); err != nil {
 			return
 		}
 
