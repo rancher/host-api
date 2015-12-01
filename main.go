@@ -12,6 +12,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancherio/host-api/config"
+	"github.com/rancherio/host-api/console"
 	"github.com/rancherio/host-api/dockersocketproxy"
 	"github.com/rancherio/host-api/events"
 	"github.com/rancherio/host-api/exec"
@@ -87,6 +88,7 @@ func main() {
 	handlers["/v1/hoststats/"] = &stats.HostStatsHandler{}
 	handlers["/v1/containerstats/"] = &stats.ContainerStatsHandler{}
 	handlers["/v1/exec/"] = &exec.ExecHandler{}
+	handlers["/v1/console/"] = &console.Handler{}
 	handlers["/v1/dockersocket/"] = &dockersocketproxy.Handler{}
 	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, handlers)
 }
