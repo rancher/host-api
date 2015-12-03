@@ -7,6 +7,8 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/google/cadvisor/client"
+	info "github.com/google/cadvisor/info/v1"
 	"github.com/rancherio/host-api/config"
 )
 
@@ -55,4 +57,39 @@ func parseRequestToken(tokenString string, parsedPublicKey interface{}) (*jwt.To
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return parsedPublicKey, nil
 	})
+}
+
+func getContainerStats(c *client.Client, count int, id string) (*info.ContainerInfo, error) {
+	var containerInfo *info.ContainerInfo
+	if id == "" {
+		i, err := c.ContainerInfo(id, &info.ContainerInfoRequest{
+			NumStats: count,
+		})
+		if err != nil {
+			return nil, err
+		}
+		containerInfo = i
+	} else {
+		i, err := c.DockerContainer(id, &info.ContainerInfoRequest{
+			NumStats: count,
+		})
+		if err != nil {
+			// Try old approach
+			container, err := resolveContainer(id)
+			if err != nil {
+				return nil, err
+			}
+			i, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
+				NumStats: count,
+			})
+			if err != nil {
+				return nil, err
+			}
+			containerInfo = i
+		} else {
+			containerInfo = &i
+		}
+	}
+
+	return containerInfo, nil
 }
