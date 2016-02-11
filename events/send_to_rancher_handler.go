@@ -23,7 +23,7 @@ func (h *SendToRancherHandler) Handle(event *docker.APIEvents) error {
 	// Note: event.ID == container's ID
 	lock := locks.Lock(event.Status + event.ID)
 	if lock == nil {
-		log.Warnf("Container locked. Can't run SendToRancherHandler. Event: [%s], ID: [%s]", event.Status, event.ID)
+		log.Debugf("Container locked. Can't run SendToRancherHandler. Event: [%s], ID: [%s]", event.Status, event.ID)
 		return nil
 	}
 	defer lock.Unlock()
