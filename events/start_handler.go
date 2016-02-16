@@ -23,6 +23,7 @@ const RancherIPEnvKey = "RANCHER_IP="
 const RancherNameserver = "169.254.169.250"
 const RancherDomain = "rancher.internal"
 const RancherDns = "io.rancher.container.dns"
+const RancherNamespaceLabel = "io.rancher.container.namespace"
 
 type StartHandler struct {
 	Client            SimpleDockerClient
@@ -44,6 +45,11 @@ func setupResolvConf(container *docker.Container) error {
 
 	var buffer bytes.Buffer
 	scanner := bufio.NewScanner(input)
+	searchSet := false
+	namespace := RancherDomain
+	if namespaceLabel, ok := container.Config.Labels[RancherNamespaceLabel]; ok {
+		namespace = namespaceLabel
+	}
 	for scanner.Scan() {
 		text := scanner.Text()
 		if strings.Contains(text, RancherNameserver) {
@@ -54,8 +60,9 @@ func setupResolvConf(container *docker.Container) error {
 			text = "# " + text
 		}
 
-		if strings.HasPrefix(text, "search") && !strings.Contains(text, RancherDomain) {
-			text = text + " " + RancherDomain
+		if strings.HasPrefix(text, "search") && !strings.Contains(text, namespace) {
+			text = text + " " + namespace
+			searchSet = true
 		}
 
 		if _, err := buffer.Write([]byte(text)); err != nil {
@@ -65,6 +72,10 @@ func setupResolvConf(container *docker.Container) error {
 		if _, err := buffer.Write([]byte("\n")); err != nil {
 			return err
 		}
+	}
+
+	if !searchSet {
+		buffer.Write([]byte("search  " + namespace + "\n"))
 	}
 
 	buffer.Write([]byte("nameserver "))
