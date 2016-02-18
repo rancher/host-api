@@ -54,6 +54,9 @@ func (h *ExecHandler) Handle(key string, initialMessage string, incomingMessages
 		for {
 			msg, ok := <-incomingMessages
 			if !ok {
+				if _, err := inputWriter.Write([]byte("\x04")); err != nil {
+					log.WithFields(log.Fields{"error": err}).Error("Error writing EOT message.")
+				}
 				w.Close()
 				return
 			}
