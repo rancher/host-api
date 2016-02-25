@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,22 +14,30 @@ import (
 	"github.com/rancherio/websocket-proxy/common"
 )
 
+const wsProto string = "Sec-Websocket-Protocol"
+const wsProtoBinary string = "binary"
+
 type FrontendHandler struct {
 	backend         backendProxy
 	parsedPublicKey interface{}
 }
 
 func (h *FrontendHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	hostKey, authed := h.auth(req)
+	_, hostKey, authed := h.auth(req)
 	if !authed {
 		http.Error(rw, "Failed authentication", 401)
 		return
 	}
 
+	binary := strings.EqualFold(req.Header.Get(wsProto), wsProtoBinary)
+	respHeaders := make(http.Header)
+	if binary {
+		respHeaders.Add(wsProto, wsProtoBinary)
+	}
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
-	ws, err := upgrader.Upgrade(rw, req, nil)
+	ws, err := upgrader.Upgrade(rw, req, respHeaders)
 	if err != nil {
 		log.Errorf("Error during upgrade: [%v]", err)
 		http.Error(rw, "Failed to upgrade connection.", 500)
@@ -46,6 +55,7 @@ func (h *FrontendHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// Send response messages to client
 	go func() {
+		defer closeConnection(ws)
 		for {
 			message, ok := <-respChannel
 			if !ok {
@@ -53,8 +63,23 @@ func (h *FrontendHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			}
 			switch message.Type {
 			case common.Body:
+				var data []byte
+				var e error
+				msgType := 1
+				if binary {
+					msgType = 2
+					data, e = base64.StdEncoding.DecodeString(message.Body)
+					if e != nil {
+						log.Errorf("Error decoding message: %v", e)
+						closeConnection(ws)
+						continue
+					}
+				} else {
+					data = []byte(message.Body)
+				}
+
 				ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
-				if err := ws.WriteMessage(1, []byte(message.Body)); err != nil {
+				if e := ws.WriteMessage(msgType, data); e != nil {
 					closeConnection(ws)
 				}
 			case common.Close:
@@ -74,33 +99,38 @@ func (h *FrontendHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			return
 		}
+		var data string
+		if binary {
+			data = base64.StdEncoding.EncodeToString(msg)
+		} else {
+			data = string(msg)
+		}
 		if msgType == websocket.BinaryMessage || msgType == websocket.TextMessage {
-			if err = h.backend.send(hostKey, msgKey, string(msg)); err != nil {
+			if err = h.backend.send(hostKey, msgKey, data); err != nil {
 				return
 			}
 		}
 	}
 }
 
-func (h *FrontendHandler) auth(req *http.Request) (string, bool) {
+func (h *FrontendHandler) auth(req *http.Request) (*jwt.Token, string, bool) {
 	token, err := parseToken(req, h.parsedPublicKey)
 	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error("Error parsing token.")
-		return "", false
+		return nil, "", false
 	}
 
 	if !token.Valid {
-		return "", false
+		return nil, "", false
 	}
 
 	hostUuid, found := token.Claims["hostUuid"]
 	if found {
 		if hostKey, ok := hostUuid.(string); ok && h.backend.hasBackend(hostKey) {
-			return hostKey, true
+			return token, hostKey, true
 		}
 	}
 	log.WithFields(log.Fields{"hostUuid": hostUuid}).Infof("Invalid backend host requested.")
-	return "", false
+	return nil, "", false
 }
 
 func closeConnection(ws *websocket.Conn) {

@@ -1,15 +1,10 @@
 {
 	"ImportPath": "github.com/rancherio/host-api",
-	"GoVersion": "go1.4.1",
+	"GoVersion": "go1.5.2",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "code.google.com/p/go-uuid/uuid",
-			"Comment": "null-15",
-			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
-		},
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
 			"Comment": "v0.6.0-5-gf92b795",
@@ -91,6 +86,15 @@
 			"Rev": "ea78a26f8048532764e0a020ee901572dc7f6046"
 		},
 		{
+			"ImportPath": "github.com/patrickmn/go-cache",
+			"Rev": "1881a9bccb818787f68c52bfba648c6cf34c34fa"
+		},
+		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Comment": "v1.0-11-gc55201b",
+			"Rev": "c55201b036063326c5b1b89ccfe45a184973d073"
+		},
+		{
 			"ImportPath": "github.com/rakyll/globalconf",
 			"Rev": "415abc325023f1a00cd2d9fa512e0e71745791a2"
 		},
@@ -110,23 +114,23 @@
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/backend",
-			"Comment": "v0.9.0-3-g4552e46",
-			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
+			"Comment": "v0.10.0-11-g810aaf1",
+			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/common",
-			"Comment": "v0.9.0-3-g4552e46",
-			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
+			"Comment": "v0.10.0-11-g810aaf1",
+			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/proxy",
-			"Comment": "v0.9.0-3-g4552e46",
-			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
+			"Comment": "v0.10.0-11-g810aaf1",
+			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/test_utils",
-			"Comment": "v0.9.0-3-g4552e46",
-			"Rev": "4552e4643e8107d1b79cdb7aa051051e448cf373"
+			"Comment": "v0.10.0-11-g810aaf1",
+			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
 		},
 		{
 			"ImportPath": "gopkg.in/check.v1",
