@@ -1,7 +1,6 @@
 package exec
 
 import (
-	"bufio"
 	"encoding/base64"
 	"io"
 	"net/url"
@@ -70,20 +69,21 @@ func (h *ExecHandler) Handle(key string, initialMessage string, incomingMessages
 	}(outputWriter)
 
 	go func(r *io.PipeReader) {
-		scanner := bufio.NewScanner(r)
-		scanner.Split(bufio.ScanRunes)
-		for scanner.Scan() {
-			data := scanner.Bytes()
-			text := base64.StdEncoding.EncodeToString(data)
-			message := common.Message{
-				Key:  key,
-				Type: common.Body,
-				Body: text,
+		buffer := make([]byte, 4096, 4096)
+		for {
+			c, err := r.Read(buffer)
+			if c > 0 {
+				text := base64.StdEncoding.EncodeToString(buffer[:c])
+				message := common.Message{
+					Key:  key,
+					Type: common.Body,
+					Body: text,
+				}
+				response <- message
 			}
-			response <- message
-		}
-		if err := scanner.Err(); err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Error with the exec scanner.")
+			if err != nil {
+				break
+			}
 		}
 	}(outputReader)
 
