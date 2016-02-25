@@ -18,6 +18,7 @@ import (
 	"github.com/rancherio/host-api/exec"
 	"github.com/rancherio/host-api/healthcheck"
 	"github.com/rancherio/host-api/logs"
+	"github.com/rancherio/host-api/proxy"
 	"github.com/rancherio/host-api/stats"
 	"github.com/rancherio/host-api/util"
 
@@ -90,6 +91,7 @@ func main() {
 	handlers["/v1/exec/"] = &exec.ExecHandler{}
 	handlers["/v1/console/"] = &console.Handler{}
 	handlers["/v1/dockersocket/"] = &dockersocketproxy.Handler{}
+	handlers["/v1/container-proxy/"] = &proxy.Handler{}
 	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, handlers)
 }
 
