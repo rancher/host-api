@@ -170,6 +170,10 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 		return err
 	}
 
+	if c.Config.Labels[RancherDns] == "false" {
+		return nil
+	}
+
 	return setupResolvConf(c)
 }
 
