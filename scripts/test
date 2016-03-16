@@ -31,7 +31,16 @@ docker run \
   --publish=8080:8080 \
   --detach=true \
   --name=cadvisor \
-  google/cadvisor:v0.21.0 --logtostderr
+  google/cadvisor:latest --logtostderr
+
+
+echo "Waiting for cadvisor to come online"
+while true; do
+  if /usr/bin/curl -f -s http://localhost:8080/api >/dev/null 2>&1; then
+    break
+  fi
+  sleep .1
+done
 
 go test ./...
 
