@@ -18,8 +18,11 @@ type AggregatedStat struct {
 }
 
 func convertToAggregatedStats(id string, containerIds map[string]string, resourceType string, stats []info.ContainerInfo, memLimit uint64) []AggregatedStats {
-	maxDataPoints := len(stats[0].Stats)
 	totalAggregatedStats := []AggregatedStats{}
+	if len(stats) == 0 {
+		return totalAggregatedStats
+	}
+	maxDataPoints := len(stats[0].Stats)
 
 	for i := 0; i < maxDataPoints; i++ {
 		aggregatedStats := []AggregatedStat{}
