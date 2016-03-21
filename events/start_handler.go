@@ -38,8 +38,11 @@ func getDnsSearch(container *docker.Container) []string {
 	if container.Config.Labels != nil {
 		if value, ok := container.Config.Labels["io.rancher.stack_service.name"]; ok {
 			splitted := strings.Split(value, "/")
+			svc := strings.ToLower(splitted[1])
 			stack := strings.ToLower(splitted[0])
+			svcNameSpace = svc + "." + stack + "." + RancherDomain
 			stackNameSpace = stack + "." + RancherDomain
+			defaultDomains = append(defaultDomains, svcNameSpace)
 			defaultDomains = append(defaultDomains, stackNameSpace)
 		}
 	}
