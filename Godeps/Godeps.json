@@ -115,22 +115,22 @@
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/backend",
 			"Comment": "v0.10.0-11-g810aaf1",
-			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
+			"Rev": "589d6bfed1567bbae499f13de423e3bf34c415f5"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/common",
 			"Comment": "v0.10.0-11-g810aaf1",
-			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
+			"Rev": "589d6bfed1567bbae499f13de423e3bf34c415f5"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/proxy",
 			"Comment": "v0.10.0-11-g810aaf1",
-			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
+			"Rev": "589d6bfed1567bbae499f13de423e3bf34c415f5"
 		},
 		{
 			"ImportPath": "github.com/rancherio/websocket-proxy/test_utils",
 			"Comment": "v0.10.0-11-g810aaf1",
-			"Rev": "810aaf1f2812bcc7f9c931ed2749f4a58ce713c8"
+			"Rev": "589d6bfed1567bbae499f13de423e3bf34c415f5"
 		},
 		{
 			"ImportPath": "gopkg.in/check.v1",
