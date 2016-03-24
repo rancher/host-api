@@ -77,9 +77,9 @@ func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherCl
 	handlers := map[string][]Handler{}
 
 	// Start Handler
-	startHandler := &StartHandler{
-		Client:            dockerClient,
-		ContainerStateDir: getContainerStateDir(),
+	startHandler, err := InitStartHandler(dockerClient, getContainerStateDir())
+	if err != nil {
+		return handlers, err
 	}
 	handlers["start"] = []Handler{startHandler}
 
