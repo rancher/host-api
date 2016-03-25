@@ -43,9 +43,12 @@ func (s *ProxyTestSuite) TestPost(c *C) {
 
 	var response common.HttpMessage
 	unmarshal(c, <-output, &response)
-
-	c.Assert(string(response.Body), Equals, "foobar")
 	c.Assert(response.Code, Equals, 200)
+	response = common.HttpMessage{}
+
+	//Second message will have the payload
+	unmarshal(c, <-output, &response)
+	c.Assert(string(response.Body), Equals, "foobar")
 }
 
 func unmarshal(c *C, msg common.Message, httpMessage *common.HttpMessage) {
