@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/rancherio/websocket-proxy/common"
 )
 
@@ -16,35 +17,43 @@ type HttpWriter struct {
 
 func (h *HttpWriter) Write(bytes []byte) (n int, err error) {
 	h.Message.Body = bytes
-	if err := h.write(); err != nil {
+	if err := h.writeMessage(); err != nil {
 		return 0, err
 	}
 	return len(bytes), nil
 }
 
-func (h *HttpWriter) write() error {
+func (h *HttpWriter) writeMessage() error {
 	bytes, err := json.Marshal(&h.Message)
 	if err != nil {
 		return err
 	}
-	h.Chan <- common.Message{
+	m := common.Message{
 		Key:  h.MessageKey,
 		Type: common.Body,
 		Body: string(bytes),
 	}
+	logrus.Debugf("HTTP WRITER %s: %#v", h.MessageKey, m)
+	h.Chan <- m
 	h.Message = common.HttpMessage{}
 	return nil
 }
 
 func (h *HttpWriter) Close() error {
 	h.Message.EOF = true
-	return h.write()
+	return h.writeMessage()
 }
 
 type HttpReader struct {
-	Buffered []byte
-	Chan     <-chan string
-	EOF      bool
+	Buffered   []byte
+	Chan       <-chan string
+	EOF        bool
+	MessageKey string
+}
+
+func (h *HttpReader) Close() error {
+	logrus.Debugf("HTTP READER CLOSE %s", h.MessageKey)
+	return nil
 }
 
 func (h *HttpReader) Read(bytes []byte) (int, error) {
@@ -58,8 +67,10 @@ func (h *HttpReader) Read(bytes []byte) (int, error) {
 	h.Buffered = h.Buffered[count:]
 
 	if h.EOF {
+		logrus.Debugf("HTTP READER RETURN EOF %s", h.MessageKey)
 		return count, io.EOF
 	} else {
+		logrus.Debugf("HTTP READER RETURN COUNT %s %d %d: %s", h.MessageKey, count, len(h.Buffered), bytes[:count])
 		return count, nil
 	}
 }
@@ -67,6 +78,7 @@ func (h *HttpReader) Read(bytes []byte) (int, error) {
 func (h *HttpReader) read() error {
 	str, ok := <-h.Chan
 	if !ok {
+		logrus.Debugf("HTTP READER CHANNEL EOF %s", h.MessageKey)
 		return io.EOF
 	}
 
@@ -74,6 +86,8 @@ func (h *HttpReader) read() error {
 	if err := json.Unmarshal([]byte(str), &message); err != nil {
 		return err
 	}
+
+	logrus.Debugf("HTTP READER MESSAGE %s %s", h.MessageKey, message.Body)
 
 	h.Buffered = message.Body
 	h.EOF = message.EOF
