@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ func TestStartHandlerHappyPath(t *testing.T) {
 	injectedIp := "10.1.2.3"
 	c, err := createNetTestContainer(dockerClient, injectedIp)
 	if err != nil {
+		t.Log("Container not created")
 		t.Fatal(err)
 	}
 	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
@@ -62,6 +64,22 @@ func assertIpInject(injectedIp string, c *docker.Container, dockerClient *docker
 	if !ok {
 		t.Fatal("Ip wasn't injected.")
 	}
+
+	if injectedIp != "" && c.Config != nil {
+		mtu := userContainerMtuSize
+		if isSystemContainer(c) {
+			mtu = systemContainerMtuSize
+		}
+
+		ok, err = assertCheckCmdOutput(strconv.Itoa(mtu), c, dockerClient, []string{"ip", "link", "show", "eth0"}, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			t.Fatalf("MTU: %d  wasn't set.", mtu)
+		}
+	}
+
 }
 
 func TestStartHandlerContainerNotRunning(t *testing.T) {

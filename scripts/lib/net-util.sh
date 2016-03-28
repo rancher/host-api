@@ -22,6 +22,7 @@ wait_for_dev()
 
 IP=
 PID=
+MTU=
 DEV=eth0
 ARGS="$@"
 
@@ -38,6 +39,10 @@ while [ "$#" -gt 0 ]; do
     -d)
         shift 1
         DEV=$1
+        ;;
+    -m)
+        shift 1
+        MTU=$1
         ;;
     esac
     shift 1
@@ -77,6 +82,12 @@ if [ -n "$IP" ]; then
     if ! ip addr show dev $DEV  | grep '[[:space:]]*inet' | awk '{ print $2 }' | grep -q $IP; then
         echo "Adding $IP to $DEV"
         ip addr add dev $DEV $IP
+
+        if [ -n "$MTU" ]; then
+            echo "seting $DEV mtu to: $MTU"
+            ip link set dev $DEV mtu $MTU
+        fi
+
         ip link show
         ip addr show
     fi
