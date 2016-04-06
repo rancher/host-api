@@ -7,23 +7,8 @@ import (
 	"testing"
 )
 
-type envIPConfigCommand struct{}
-
 func useEnvVars() bool {
 	return os.Getenv("CATTLE_DOCKER_USE_BOOT2DOCKER") == "true"
-}
-
-func (eIPC *envIPConfigCommand) buildCommand(pid string, ip string) *exec.Cmd {
-	// Assumes boot2docker. Also assumes that:
-	// - nsenter and net-utils.sh are on the path in the b2d vm
-	// - This link exists: ln -s /proc/ /host/proc
-	// See the README.md in this directory for setup details.
-	dockerMachine := os.Getenv("CATTLE_TEST_DOCKER_MACHINE_HOST")
-	if dockerMachine != "" {
-		return exec.Command("docker-machine", "ssh", dockerMachine, "sudo net-util.sh -p "+pid+" -i "+ip)
-	} else {
-		return exec.Command("boot2docker", "ssh", "-t", "sudo", "net-util.sh", "-p", pid, "-i", ip)
-	}
 }
 
 func createContainer(client *docker.Client) (*docker.Container, error) {
@@ -115,8 +100,17 @@ func prep(t *testing.T) *docker.Client {
 	}
 
 	if useEnvVars() {
-		getIPConfigCommand = func(system bool) ipConfigCommand {
-			return &envIPConfigCommand{}
+		buildCommand = func(pid string, ip string) *exec.Cmd {
+			// Assumes boot2docker. Also assumes that:
+			// - nsenter and net-utils.sh are on the path in the b2d vm
+			// - This link exists: ln -s /proc/ /host/proc
+			// See the README.md in this directory for setup details.
+			dockerMachine := os.Getenv("CATTLE_TEST_DOCKER_MACHINE_HOST")
+			if dockerMachine != "" {
+				return exec.Command("docker-machine", "ssh", dockerMachine, "sudo net-util.sh -p "+pid+" -i "+ip)
+			} else {
+				return exec.Command("boot2docker", "ssh", "-t", "sudo", "net-util.sh", "-p", pid, "-i", ip)
+			}
 		}
 	}
 

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -24,23 +23,10 @@ const RancherIPEnvKey = "RANCHER_IP="
 const RancherNameserver = "169.254.169.250"
 const RancherDomain = "rancher.internal"
 const RancherDns = "io.rancher.container.dns"
-const DockerBridgeInterface = "docker0"
-
-var (
-	systemContainerMtuSize = 1500
-	userContainerMtuSize   = 1500
-)
 
 type StartHandler struct {
 	Client            SimpleDockerClient
 	ContainerStateDir string
-}
-
-func InitStartHandler(client SimpleDockerClient, stateDir string) (*StartHandler, error) {
-	return &StartHandler{
-		Client:            client,
-		ContainerStateDir: stateDir,
-	}, setMtuSizes()
 }
 
 func getDnsSearch(container *docker.Container) []string {
@@ -167,10 +153,8 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	}
 
 	pid := c.State.Pid
-
-	ipConfigCommand := getIPConfigCommand(isSystemContainer(c))
 	log.Infof("Assigning IP [%s], ContainerId [%s], Pid [%v]", rancherIP, event.ID, pid)
-	if err := configureIP(strconv.Itoa(pid), rancherIP, ipConfigCommand); err != nil {
+	if err := configureIP(strconv.Itoa(pid), rancherIP); err != nil {
 		// If it stopped running, don't return error
 		c, inspectErr := h.Client.InspectContainer(event.ID)
 		if inspectErr != nil {
@@ -191,13 +175,6 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	}
 
 	return setupResolvConf(c)
-}
-
-var getIPConfigCommand = func(system bool) ipConfigCommand {
-	if system {
-		return &systemIPConfigCommand{}
-	}
-	return &userIPConfigCommand{}
 }
 
 func (h *StartHandler) getRancherIP(c *docker.Container) (string, error) {
@@ -240,8 +217,8 @@ func (h *StartHandler) getRancherIP(c *docker.Container) (string, error) {
 	return "", nil
 }
 
-func configureIP(pid, ip string, cmd ipConfigCommand) error {
-	command := cmd.buildCommand(pid, ip)
+func configureIP(pid string, ip string) error {
+	command := buildCommand(pid, ip)
 
 	output, err := command.CombinedOutput()
 	log.Debugf(string(output))
@@ -252,91 +229,9 @@ func configureIP(pid, ip string, cmd ipConfigCommand) error {
 	return nil
 }
 
-func isSystemContainer(c *docker.Container) bool {
-	if c.Config != nil {
-		if _, ok := c.Config.Labels[RancherSystemLabelKey]; ok {
-			return true
-		}
-	}
-	return false
+var buildCommand = func(pid string, ip string) *exec.Cmd {
+	return exec.Command("net-util.sh", "-p", pid, "-i", ip)
 }
-
-func setMtuSizes() error {
-	gw, err := getDefaultGWDevice()
-	if err != nil {
-		return err
-	}
-	log.Debugf("DefaultGW: %s", gw)
-
-	interfaces, err := getInterfacesMap()
-	if err != nil {
-		return err
-	}
-
-	if iface, ok := interfaces[gw]; ok {
-		systemContainerMtuSize = iface.MTU
-
-		log.Debugf("GW MTU: %d", iface.MTU)
-		if dockerBridge, ok := interfaces[DockerBridgeInterface]; ok {
-			log.Debugf("DB MTU: %d", dockerBridge.MTU)
-			if dockerBridge.MTU < systemContainerMtuSize {
-				systemContainerMtuSize = dockerBridge.MTU
-			}
-		}
-	}
-	log.Debugf("system MTU set to: %d", systemContainerMtuSize)
-
-	// user MTU = system MTU - (Network COntainer headers(IP(20)+IPSec(58)) + UserContainer IP headers (20))
-	// MTU = System MTU - 98
-	userContainerMtuSize = systemContainerMtuSize - 98
-	log.Debugf("User MTU set to: %d", userContainerMtuSize)
-
-	return nil
-}
-
-func getInterfacesMap() (map[string]net.Interface, error) {
-	ifaceMap := map[string]net.Interface{}
-
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return ifaceMap, err
-	}
-
-	for _, iface := range interfaces {
-		ifaceMap[iface.Name] = iface
-	}
-	return ifaceMap, nil
-}
-
-func (sc *systemIPConfigCommand) buildCommand(pid string, ip string) *exec.Cmd {
-	log.Debugf("systemMTU: %s", systemContainerMtuSize)
-	return exec.Command("net-util.sh", "-p", pid, "-i", ip, "-m", strconv.Itoa(systemContainerMtuSize))
-}
-
-func (uc *userIPConfigCommand) buildCommand(pid string, ip string) *exec.Cmd {
-	log.Debugf("UserMTU: %s", userContainerMtuSize)
-	return exec.Command("net-util.sh", "-p", pid, "-i", ip, "-m", strconv.Itoa(userContainerMtuSize))
-}
-
-func getDefaultGWDevice() (string, error) {
-	cmd := exec.Command("ip", "route", "show", "default", "0.0.0.0/0")
-
-	output, err := cmd.CombinedOutput()
-	log.Debugf(string(output))
-	if err != nil {
-		return "", err
-	}
-
-	return strings.Split(string(output), " ")[4], nil
-}
-
-type ipConfigCommand interface {
-	buildCommand(string, string) *exec.Cmd
-}
-
-type systemIPConfigCommand struct{}
-
-type userIPConfigCommand struct{}
 
 type subnet struct {
 	CidrSize int
