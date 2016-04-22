@@ -10,15 +10,4 @@ fi
 
 set_project_vars
 
-if [ -L ${PACKAGE} ]; then
-    rm ${PACKAGE}
-fi
-
-if [ ! -e ${PACKAGE} ]; then
-    mkdir -p $(dirname $PACKAGE)
-    ln -s $(pwd) $PACKAGE
-fi
-
-echo export GOPATH=$GOPATH
-
-go build -o bin/${PROJECT}
+go build -o bin/$(basename $(pwd))
