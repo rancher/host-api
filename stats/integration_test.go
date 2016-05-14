@@ -2,6 +2,7 @@ package stats
 
 import (
 	"flag"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -34,7 +35,7 @@ func TestContainerStats(t *testing.T) {
 	createContainerOptions := client.CreateContainerOptions{
 		Name: "cadvisortest",
 		Config: &client.Config{
-			Image: "google/cadvisor:latest",
+			Image: "google/cadvisor:v0.22.0",
 		},
 	}
 
@@ -85,24 +86,35 @@ func TestContainerStats(t *testing.T) {
 
 	log.Infof("%+v", cIds)
 
-	token := wsp_utils.CreateTokenWithPayload(payload, privateKey)
-	url := "ws://localhost:1111/v1/containerstats?token=" + token
-	ws, _, err := dialer.Dial(url, headers)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ws.Close()
-
-	for count := 0; count < 4; count++ {
-		_, msg, err := ws.ReadMessage()
+Outer:
+	for i := 0; i < 5; i++ {
+		token := wsp_utils.CreateTokenWithPayload(payload, privateKey)
+		url := "ws://localhost:1111/v1/containerstats?token=" + token
+		ws, _, err := dialer.Dial(url, headers)
 		if err != nil {
 			t.Fatal(err)
 		}
-		stats := string(msg)
-		if !strings.Contains(stats, "1i1") || !strings.Contains(stats, "1i2") {
-			t.Fatalf("Stats are not working. Output: [%s]", stats)
+		defer ws.Close()
+
+		for count := 0; count < 4; count++ {
+			_, msg, err := ws.ReadMessage()
+			if err == io.EOF {
+				// May take a second or two before cadvisor knows about the container
+				time.Sleep(500 * time.Millisecond)
+				continue Outer
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			stats := string(msg)
+			if !strings.Contains(stats, "1i1") || !strings.Contains(stats, "1i2") {
+				t.Fatalf("Stats are not working. Output: [%s]", stats)
+			}
 		}
+		return
 	}
+
+	log.Fatal(io.EOF)
 }
 
 // This test wont work in dind. Disabling it for now, until I figure out a solution

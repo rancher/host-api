@@ -31,7 +31,7 @@ docker run \
   --publish=8080:8080 \
   --detach=true \
   --name=cadvisor \
-  google/cadvisor:latest --logtostderr
+  google/cadvisor:v0.22.0 --logtostderr
 
 
 echo "Waiting for cadvisor to come online"
@@ -42,7 +42,7 @@ while true; do
   sleep .1
 done
 
-go test ./...
+go test -timeout 20s -v ./...
 
 result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -l)
 for i in $result; do

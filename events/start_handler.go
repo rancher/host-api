@@ -23,6 +23,7 @@ const RancherIPEnvKey = "RANCHER_IP="
 const RancherNameserver = "169.254.169.250"
 const RancherDomain = "rancher.internal"
 const RancherDns = "io.rancher.container.dns"
+const RancherVM = "io.rancher.vm"
 
 type StartHandler struct {
 	Client            SimpleDockerClient
@@ -133,6 +134,10 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	c, err := h.Client.InspectContainer(event.ID)
 	if err != nil {
 		return err
+	}
+
+	if c.Config.Labels[RancherVM] == "true" {
+		return nil
 	}
 
 	rancherIP, err := h.getRancherIP(c)
