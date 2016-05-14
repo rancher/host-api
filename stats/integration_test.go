@@ -34,7 +34,7 @@ func TestContainerStats(t *testing.T) {
 	createContainerOptions := client.CreateContainerOptions{
 		Name: "cadvisortest",
 		Config: &client.Config{
-			Image: "google/cadvisor:latest",
+			Image: "google/cadvisor:v0.22.0",
 		},
 	}
 
