@@ -122,6 +122,14 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 			infos = append(infos, cInfos...)
 		}
 
+		if count == 1 {
+			for i := range infos {
+				if len(infos[i].Stats) > 0 {
+					infos[i].Stats[0].Timestamp = time.Now()
+				}
+			}
+		}
+
 		err = writeAggregatedStats(id, containerIds, "container", infos, uint64(memLimit), writer)
 		if err != nil {
 			return
