@@ -78,6 +78,9 @@ type worker struct{}
 
 func (w *worker) doWork(event *docker.APIEvents, e *EventRouter) {
 	defer func() { e.workers <- w }()
+	if event == nil {
+		return
+	}
 	if handlers, ok := e.handlers[event.Status]; ok {
 		log.Infof("Processing event: %#v", event)
 		for _, handler := range handlers {
