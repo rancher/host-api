@@ -1,0 +1,4 @@
+FROM scratch
+ADD ./dist/artifacts/websocket-proxy /websocket-proxy
+
+CMD ["/websocket-proxy"]

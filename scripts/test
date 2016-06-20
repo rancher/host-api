@@ -44,7 +44,7 @@ done
 
 go test -timeout 20s -v ./...
 
-result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -l)
+result=$(find . -name "*.go" | grep -v ./vendor | xargs gofmt -l)
 for i in $result; do
     echo Violates gofmt: $i
 done
