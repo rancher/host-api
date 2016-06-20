@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -e
-
-function set_project_vars() {
-    export GOPATH=$(cd ../../../..; pwd)
-}
