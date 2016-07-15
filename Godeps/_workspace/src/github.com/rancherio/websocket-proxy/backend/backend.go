@@ -53,6 +53,9 @@ func connectToProxyWS(ws *websocket.Conn, handlers map[string]Handler) {
 		}
 	}()
 
+	ph := newPongHandler(ws)
+	ws.SetPongHandler(ph.handle)
+
 	// Read and route messages from proxy
 	for {
 		_, msg, err := ws.ReadMessage()
