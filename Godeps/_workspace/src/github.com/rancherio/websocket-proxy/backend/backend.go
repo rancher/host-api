@@ -39,6 +39,7 @@ func connectToProxyWS(ws *websocket.Conn, handlers map[string]Handler) {
 
 	// Write messages to proxy
 	go func() {
+		ticker := time.NewTicker(time.Second * 5)
 		for {
 			select {
 			case message, ok := <-responseChannel:
@@ -49,7 +50,7 @@ func connectToProxyWS(ws *websocket.Conn, handlers map[string]Handler) {
 				log.Infof("Sending message")
 				data := common.FormatMessage(message.Key, message.Type, message.Body)
 				ws.WriteMessage(1, []byte(data))
-			case <-time.After(time.Second * 5):
+			case <-ticker.C:
 				log.Infof("Sending Ping")
 				ws.WriteControl(websocket.PingMessage, []byte(""), time.Now().Add(time.Second))
 			}
