@@ -44,14 +44,11 @@ func connectToProxyWS(ws *websocket.Conn, handlers map[string]Handler) {
 			select {
 			case message, ok := <-responseChannel:
 				if !ok {
-					log.Infof("Exiting write loop")
 					return
 				}
-				log.Infof("Sending message")
 				data := common.FormatMessage(message.Key, message.Type, message.Body)
 				ws.WriteMessage(1, []byte(data))
 			case <-ticker.C:
-				log.Infof("Sending Ping")
 				ws.WriteControl(websocket.PingMessage, []byte(""), time.Now().Add(time.Second))
 			}
 		}
