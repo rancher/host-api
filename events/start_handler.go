@@ -48,6 +48,9 @@ func getDnsSearch(container *docker.Container) []string {
 		}
 	}
 
+	// default rancher domain
+	defaultDomains = append(defaultDomains, RancherDomain)
+
 	//from search domains
 	if container.HostConfig.DNSSearch != nil {
 		for _, domain := range container.HostConfig.DNSSearch {
@@ -57,8 +60,6 @@ func getDnsSearch(container *docker.Container) []string {
 		}
 	}
 
-	// default rancher domain
-	defaultDomains = append(defaultDomains, RancherDomain)
 	return defaultDomains
 }
 
