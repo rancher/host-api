@@ -105,10 +105,15 @@ func (s *Handler) doHijack(message *common.HttpMessage, key string, incomingMess
 			log.WithField("error", err).Errorf("Failed to read request %s", u.Host)
 		}
 		reader.Close()
+
+		for range incomingMessages {
+			// waiting for channel to close
+		}
+		conn.Close()
 	}()
 
 	if _, err := io.Copy(writer, conn); err != nil {
-		log.WithField("error", err).Errorf("Failed to write response for %s", u.Host)
+		log.WithField("error", err).Infof("Failed to write response for %s", u.Host)
 	}
 	writer.Close()
 
