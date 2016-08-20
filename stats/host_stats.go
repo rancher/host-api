@@ -10,9 +10,9 @@ import (
 	"github.com/google/cadvisor/client"
 	info "github.com/google/cadvisor/info/v1"
 
+	"github.com/rancher/websocket-proxy/backend"
+	"github.com/rancher/websocket-proxy/common"
 	"github.com/rancherio/host-api/config"
-	"github.com/rancherio/websocket-proxy/backend"
-	"github.com/rancherio/websocket-proxy/common"
 )
 
 type HostStatsHandler struct {

@@ -13,13 +13,13 @@ import (
 	"github.com/gorilla/websocket"
 	"gopkg.in/check.v1"
 
-	"github.com/rancherio/websocket-proxy/backend"
-	"github.com/rancherio/websocket-proxy/proxy"
-	wsp_utils "github.com/rancherio/websocket-proxy/test_utils"
+	"github.com/rancher/websocket-proxy/backend"
+	"github.com/rancher/websocket-proxy/proxy"
+	wsp_utils "github.com/rancher/websocket-proxy/testutils"
 
 	"github.com/rancherio/host-api/config"
 	"github.com/rancherio/host-api/events"
-	"github.com/rancherio/host-api/test_utils"
+	"github.com/rancherio/host-api/testutils"
 )
 
 var privateKey interface{}
@@ -109,8 +109,8 @@ func (s *LogsTestSuite) setupWebsocketProxy() {
 	config.Config.ParsedPublicKey = wsp_utils.ParseTestPublicKey()
 	privateKey = wsp_utils.ParseTestPrivateKey()
 
-	conf := test_utils.GetTestConfig(":3333")
-	p := &proxy.ProxyStarter{
+	conf := testutils.GetTestConfig(":3333")
+	p := &proxy.Starter{
 		BackendPaths:  []string{"/v1/connectbackend"},
 		FrontendPaths: []string{"/v1/{logs:logs}/"},
 		Config:        conf,

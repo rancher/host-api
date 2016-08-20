@@ -27,7 +27,7 @@ func TestEventRouter(t *testing.T) {
 	handler := &testHandler{
 		handlerFunc: hFn,
 	}
-	handlers := map[string][]Handler{"create": []Handler{handler}}
+	handlers := map[string][]Handler{"create": {handler}}
 	dockerClient, _ := NewDockerClient()
 	router, _ := NewEventRouter(5, 5, dockerClient, handlers)
 	defer router.Stop()
@@ -65,7 +65,7 @@ func TestWorkerTimeout(t *testing.T) {
 		handlerFunc: hFn,
 	}
 
-	handlers := map[string][]Handler{"create": []Handler{handler}}
+	handlers := map[string][]Handler{"create": {handler}}
 
 	dockerClient, _ := NewDockerClient()
 	router, _ := NewEventRouter(1, 1, dockerClient, handlers)

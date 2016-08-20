@@ -11,9 +11,9 @@ import (
 	info "github.com/google/cadvisor/info/v1"
 
 	"github.com/google/cadvisor/client"
+	"github.com/rancher/websocket-proxy/backend"
+	"github.com/rancher/websocket-proxy/common"
 	"github.com/rancherio/host-api/config"
-	"github.com/rancherio/websocket-proxy/backend"
-	"github.com/rancherio/websocket-proxy/common"
 )
 
 type StatsHandler struct {
@@ -94,7 +94,7 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 	return
 }
 
-func writeStats(info *info.ContainerInfo, memLimit int64, writer io.Writer) error {
+func writeStats(info *info.ContainerInfo, memLimit uint64, writer io.Writer) error {
 	for _, stat := range info.Stats {
 		data, err := json.Marshal(stat)
 		if err != nil {

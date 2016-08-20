@@ -24,8 +24,8 @@ import (
 
 	"github.com/golang/glog"
 
-	rclient "github.com/rancherio/go-rancher/client"
-	"github.com/rancherio/websocket-proxy/backend"
+	rclient "github.com/rancher/go-rancher/client"
+	"github.com/rancher/websocket-proxy/backend"
 )
 
 func main() {

@@ -14,7 +14,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/rancherio/go-machine-service/locks"
+	"github.com/rancher/event-subscriber/locks"
 )
 
 const RancherIPLabelKey = "io.rancher.container.ip"

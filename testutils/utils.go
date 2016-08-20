@@ -1,4 +1,4 @@
-package test_utils
+package testutils
 
 import (
 	"io/ioutil"
@@ -6,13 +6,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	jwt "github.com/dgrijalva/jwt-go"
 
-	"github.com/rancherio/websocket-proxy/proxy"
+	"github.com/rancher/websocket-proxy/proxy"
 )
 
 var privateKey interface{}
 
 func ParseTestPrivateKey() interface{} {
-	keyBytes, err := ioutil.ReadFile("../test_utils/private.pem")
+	keyBytes, err := ioutil.ReadFile("../testutils/private.pem")
 	if err != nil {
 		log.Fatal("Failed to parse private key.", err)
 	}
@@ -30,7 +30,7 @@ func GetTestConfig(addr string) *proxy.Config {
 		ListenAddr: addr,
 	}
 
-	pubKey, err := proxy.ParsePublicKey("../test_utils/public.pem")
+	pubKey, err := proxy.ParsePublicKey("../testutils/public.pem")
 	if err != nil {
 		log.Fatal("Failed to parse key. ", err)
 	}

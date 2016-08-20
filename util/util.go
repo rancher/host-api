@@ -1,7 +1,7 @@
 package util
 
 import (
-	rclient "github.com/rancherio/go-rancher/client"
+	rclient "github.com/rancher/go-rancher/client"
 	"github.com/rancherio/host-api/config"
 )
 

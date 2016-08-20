@@ -11,8 +11,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	dockerClient "github.com/fsouza/go-dockerclient"
 
-	"github.com/rancherio/websocket-proxy/backend"
-	"github.com/rancherio/websocket-proxy/common"
+	"github.com/rancher/websocket-proxy/backend"
+	"github.com/rancher/websocket-proxy/common"
 
 	// "github.com/rancherio/host-api/app/common/connect"
 	"github.com/rancherio/host-api/auth"

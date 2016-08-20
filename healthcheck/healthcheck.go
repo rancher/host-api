@@ -7,7 +7,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/patrickmn/go-cache"
-	"github.com/rancherio/go-rancher/client"
+	"github.com/rancher/go-rancher/client"
 	"github.com/rancherio/host-api/pkg/haproxy"
 	"github.com/rancherio/host-api/util"
 )

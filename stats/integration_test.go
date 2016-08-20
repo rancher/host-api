@@ -15,11 +15,11 @@ import (
 
 	client "github.com/fsouza/go-dockerclient"
 
+	"github.com/rancher/websocket-proxy/backend"
+	"github.com/rancher/websocket-proxy/proxy"
+	wsp_utils "github.com/rancher/websocket-proxy/testutils"
 	"github.com/rancherio/host-api/config"
-	"github.com/rancherio/host-api/test_utils"
-	"github.com/rancherio/websocket-proxy/backend"
-	"github.com/rancherio/websocket-proxy/proxy"
-	wsp_utils "github.com/rancherio/websocket-proxy/test_utils"
+	"github.com/rancherio/host-api/testutils"
 )
 
 var privateKey interface{}
@@ -129,7 +129,7 @@ func unTestContainerStatSingleContainer(t *testing.T) {
 
 	ctrs, err := c.ListContainers(client.ListContainersOptions{
 		Filters: map[string][]string{
-			"image": []string{"google/cadvisor"},
+			"image": {"google/cadvisor"},
 		},
 	})
 	if err != nil || len(ctrs) == 0 {
@@ -229,8 +229,8 @@ func setupWebsocketProxy() {
 	config.Config.ParsedPublicKey = wsp_utils.ParseTestPublicKey()
 	privateKey = wsp_utils.ParseTestPrivateKey()
 
-	conf := test_utils.GetTestConfig(":1111")
-	p := &proxy.ProxyStarter{
+	conf := testutils.GetTestConfig(":1111")
+	p := &proxy.Starter{
 		BackendPaths:  []string{"/v1/connectbackend"},
 		FrontendPaths: []string{"/v1/{logs:logs}/", "/v1/{stats:stats}", "/v1/{stats:stats}/{statsid}", "/v1/exec/"},
 		StatsPaths: []string{"/v1/{hoststats:hoststats(\\/project)?(\\/)?}",
