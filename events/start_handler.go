@@ -228,6 +228,7 @@ func configureIP(pid string, ip string) error {
 	output, err := command.CombinedOutput()
 	log.Debugf(string(output))
 	if err != nil {
+		log.Errorf("command: '%s', output: '%s'", command.Args, string(output))
 		return err
 	}
 
