@@ -18,8 +18,8 @@ import (
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/proxy"
 	wsp_utils "github.com/rancher/websocket-proxy/testutils"
-	"github.com/rancherio/host-api/config"
-	"github.com/rancherio/host-api/testutils"
+	"github.com/rancher/host-api/config"
+	"github.com/rancher/host-api/testutils"
 )
 
 var privateKey interface{}

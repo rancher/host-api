@@ -10,7 +10,7 @@ import (
 
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
-	"github.com/rancherio/host-api/auth"
+	"github.com/rancher/host-api/auth"
 )
 
 type Handler struct {

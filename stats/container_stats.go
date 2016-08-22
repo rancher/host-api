@@ -12,7 +12,7 @@ import (
 
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
-	"github.com/rancherio/host-api/config"
+	"github.com/rancher/host-api/config"
 )
 
 type ContainerStatsHandler struct {

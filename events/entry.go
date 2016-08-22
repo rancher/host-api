@@ -3,8 +3,8 @@ package events
 import (
 	"github.com/fsouza/go-dockerclient"
 	rclient "github.com/rancher/go-rancher/client"
-	"github.com/rancherio/host-api/config"
-	"github.com/rancherio/host-api/util"
+	"github.com/rancher/host-api/config"
+	"github.com/rancher/host-api/util"
 )
 
 func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {

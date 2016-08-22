@@ -7,8 +7,8 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/context"
-	"github.com/rancherio/host-api/app/common"
-	"github.com/rancherio/host-api/config"
+	"github.com/rancher/host-api/app/common"
+	"github.com/rancher/host-api/config"
 )
 
 func Auth(rw http.ResponseWriter, req *http.Request) bool {

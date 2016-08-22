@@ -14,9 +14,9 @@ import (
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
 
-	// "github.com/rancherio/host-api/app/common/connect"
-	"github.com/rancherio/host-api/auth"
-	"github.com/rancherio/host-api/events"
+	// "github.com/rancher/host-api/app/common/connect"
+	"github.com/rancher/host-api/auth"
+	"github.com/rancher/host-api/events"
 )
 
 type LogsHandler struct {
