@@ -11,21 +11,21 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancherio/host-api/config"
-	"github.com/rancherio/host-api/console"
-	"github.com/rancherio/host-api/dockersocketproxy"
-	"github.com/rancherio/host-api/events"
-	"github.com/rancherio/host-api/exec"
-	"github.com/rancherio/host-api/healthcheck"
-	"github.com/rancherio/host-api/logs"
-	"github.com/rancherio/host-api/proxy"
-	"github.com/rancherio/host-api/stats"
-	"github.com/rancherio/host-api/util"
+	"github.com/rancher/host-api/config"
+	"github.com/rancher/host-api/console"
+	"github.com/rancher/host-api/dockersocketproxy"
+	"github.com/rancher/host-api/events"
+	"github.com/rancher/host-api/exec"
+	"github.com/rancher/host-api/healthcheck"
+	"github.com/rancher/host-api/logs"
+	"github.com/rancher/host-api/proxy"
+	"github.com/rancher/host-api/stats"
+	"github.com/rancher/host-api/util"
 
 	"github.com/golang/glog"
 
-	rclient "github.com/rancherio/go-rancher/client"
-	"github.com/rancherio/websocket-proxy/backend"
+	rclient "github.com/rancher/go-rancher/client"
+	"github.com/rancher/websocket-proxy/backend"
 )
 
 func main() {

@@ -4,7 +4,7 @@ Some of these tests actualy spin up containers and use nsenter to manipulate IPs
 
 ```
 boot2docker ssh
-cp /Users/PATH/TO/PROJECT/host-api/src/github.com/rancherio/host-api/scripts/lib/net-util.sh .
+cp /Users/PATH/TO/PROJECT/host-api/src/github.com/rancher/host-api/scripts/lib/net-util.sh .
 cp /Users/PATH/TO/PROJECT/python-agent/vendor/nsenter .
 vi net-util.sh # change /bin/bash to /bin/sh. b2d doesnt have bash. This is a hack but works
 cp net-util.sh nsenter /usr/local/bin/

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -e -x
 
 cd $(dirname $0)/..
 
@@ -19,9 +19,6 @@ if [[ ! -e /host/proc/ ]]; then
     ln -s /proc /host/proc
 fi
 
-. ./scripts/common_functions
-
-set_project_vars
 
 docker run \
   --volume=/:/rootfs:ro \
@@ -44,7 +41,7 @@ done
 
 go test -timeout 20s -v ./...
 
-result=$(find . -name "*.go" | grep -v ./Godeps | xargs gofmt -l)
+result=$(find . -name "*.go" | grep -v ./vendor | xargs gofmt -l)
 for i in $result; do
     echo Violates gofmt: $i
 done

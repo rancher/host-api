@@ -2,7 +2,7 @@ package events
 
 import (
 	"github.com/fsouza/go-dockerclient"
-	rclient "github.com/rancherio/go-rancher/client"
+	rclient "github.com/rancher/go-rancher/client"
 	"testing"
 )
 
