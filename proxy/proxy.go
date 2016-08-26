@@ -14,8 +14,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/rancherio/websocket-proxy/backend"
-	"github.com/rancherio/websocket-proxy/common"
+	"github.com/rancher/websocket-proxy/backend"
+	"github.com/rancher/websocket-proxy/common"
 )
 
 type Handler struct {
@@ -40,7 +40,7 @@ func (s *Handler) Handle(key string, initialMessage string, incomingMessages <-c
 	}
 }
 
-func (s *Handler) doHijack(message *common.HttpMessage, key string, incomingMessages <-chan string, response chan<- common.Message) {
+func (s *Handler) doHijack(message *common.HTTPMessage, key string, incomingMessages <-chan string, response chan<- common.Message) {
 	req, err := http.NewRequest(message.Method, message.URL, nil)
 	if err != nil {
 		log.WithField("error", err).Error("Failed to create request")
@@ -132,7 +132,7 @@ func setContentLength(req *http.Request) (int64, error) {
 	return req.ContentLength, nil
 }
 
-func (s *Handler) doHttp(message *common.HttpMessage, key string, incomingMessages <-chan string, response chan<- common.Message) {
+func (s *Handler) doHttp(message *common.HTTPMessage, key string, incomingMessages <-chan string, response chan<- common.Message) {
 	req, err := http.NewRequest(message.Method, message.URL, &HttpReader{
 		Buffered:   message.Body,
 		Chan:       incomingMessages,
@@ -160,7 +160,7 @@ func (s *Handler) doHttp(message *common.HttpMessage, key string, incomingMessag
 	}
 	defer resp.Body.Close()
 
-	httpResponseMessage := common.HttpMessage{
+	httpResponseMessage := common.HTTPMessage{
 		Code:    resp.StatusCode,
 		Headers: map[string][]string(resp.Header),
 	}
@@ -185,9 +185,9 @@ func (s *Handler) doHttp(message *common.HttpMessage, key string, incomingMessag
 	}
 }
 
-func readMessage(incomingMessages <-chan string) (*common.HttpMessage, error) {
+func readMessage(incomingMessages <-chan string) (*common.HTTPMessage, error) {
 	str := <-incomingMessages
-	var message common.HttpMessage
+	var message common.HTTPMessage
 	if err := json.Unmarshal([]byte(str), &message); err != nil {
 		return nil, err
 	}

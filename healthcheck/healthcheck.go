@@ -7,9 +7,9 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/patrickmn/go-cache"
-	"github.com/rancherio/go-rancher/client"
-	"github.com/rancherio/host-api/pkg/haproxy"
-	"github.com/rancherio/host-api/util"
+	"github.com/rancher/go-rancher/client"
+	"github.com/rancher/host-api/pkg/haproxy"
+	"github.com/rancher/host-api/util"
 )
 
 var PREFIX = "cattle-"

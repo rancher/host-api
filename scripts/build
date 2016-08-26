@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -e -x
 
 cd $(dirname $0)/..
 
@@ -6,19 +7,4 @@ if [ -f ./build/bootstrap.envs ];then
     . ./build/bootstrap.envs
 fi
 
-. ./scripts/common_functions
-
-set_project_vars
-
-if [ -L ${PACKAGE} ]; then
-    rm ${PACKAGE}
-fi
-
-if [ ! -e ${PACKAGE} ]; then
-    mkdir -p $(dirname $PACKAGE)
-    ln -s $(pwd) $PACKAGE
-fi
-
-echo export GOPATH=$GOPATH
-
-go build -o bin/${PROJECT}
+go build -ldflags "-linkmode external -extldflags -static -s" -o bin/host-api

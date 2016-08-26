@@ -1,3 +1,4 @@
+/.dapper
 bin
 host-api
 dist
@@ -7,4 +8,5 @@ gopath
 build/
 
 .DS_Store
+.trash-cache
 watch-test/

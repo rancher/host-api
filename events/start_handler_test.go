@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/rancherio/go-machine-service/locks"
+	"github.com/rancher/event-subscriber/locks"
 	"io"
 	"io/ioutil"
 	"os"

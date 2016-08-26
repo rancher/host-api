@@ -2,9 +2,9 @@ package events
 
 import (
 	"github.com/fsouza/go-dockerclient"
-	rclient "github.com/rancherio/go-rancher/client"
-	"github.com/rancherio/host-api/config"
-	"github.com/rancherio/host-api/util"
+	rclient "github.com/rancher/go-rancher/client"
+	"github.com/rancher/host-api/config"
+	"github.com/rancher/host-api/util"
 )
 
 func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
