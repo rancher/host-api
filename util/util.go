@@ -1,8 +1,8 @@
 package util
 
 import (
-	rclient "github.com/rancherio/go-rancher/client"
-	"github.com/rancherio/host-api/config"
+	rclient "github.com/rancher/go-rancher/client"
+	"github.com/rancher/host-api/config"
 )
 
 func GetRancherClient() (*rclient.RancherClient, error) {

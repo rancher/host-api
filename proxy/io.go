@@ -5,12 +5,12 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancherio/websocket-proxy/common"
+	"github.com/rancher/websocket-proxy/common"
 )
 
 type HttpWriter struct {
 	headerWritten bool
-	Message       common.HttpMessage
+	Message       common.HTTPMessage
 	MessageKey    string
 	Chan          chan<- common.Message
 }
@@ -35,7 +35,7 @@ func (h *HttpWriter) writeMessage() error {
 	}
 	logrus.Debugf("HTTP WRITER %s: %#v", h.MessageKey, m)
 	h.Chan <- m
-	h.Message = common.HttpMessage{}
+	h.Message = common.HTTPMessage{}
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (h *HttpReader) read() error {
 		return io.EOF
 	}
 
-	var message common.HttpMessage
+	var message common.HTTPMessage
 	if err := json.Unmarshal([]byte(str), &message); err != nil {
 		return err
 	}

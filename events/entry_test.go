@@ -2,7 +2,7 @@ package events
 
 import (
 	"github.com/fsouza/go-dockerclient"
-	rclient "github.com/rancherio/go-rancher/client"
+	rclient "github.com/rancher/go-rancher/client"
 	"testing"
 	"time"
 )
@@ -29,7 +29,7 @@ func TestProcessDockerEvents(t *testing.T) {
 	}
 	processor.getHandlers = func(dockerClient *docker.Client,
 		rancherClient *rclient.RancherClient) (map[string][]Handler, error) {
-		return map[string][]Handler{"start": []Handler{handler}}, nil
+		return map[string][]Handler{"start": {handler}}, nil
 	}
 
 	// Create pre-existing containers before starting event listener

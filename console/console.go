@@ -9,9 +9,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/rancherio/host-api/auth"
-	"github.com/rancherio/websocket-proxy/backend"
-	"github.com/rancherio/websocket-proxy/common"
+	"github.com/rancher/host-api/auth"
+	"github.com/rancher/websocket-proxy/backend"
+	"github.com/rancher/websocket-proxy/common"
 )
 
 const socketLocFmt string = "/var/lib/rancher/vm/%v/vnc"

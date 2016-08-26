@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/rancherio/websocket-proxy/common"
+	"github.com/rancher/websocket-proxy/common"
 
 	. "gopkg.in/check.v1"
 )
@@ -29,29 +29,29 @@ func (s *ProxyTestSuite) TestPost(c *C) {
 	handler := &Handler{}
 	go handler.Handle("key", "init", input, output)
 
-	input <- marshal(c, common.HttpMessage{
+	input <- marshal(c, common.HTTPMessage{
 		Method: "GET",
 		URL:    "http://" + host + "/foo",
 		Body:   []byte("foo"),
 	})
-	input <- marshal(c, common.HttpMessage{
+	input <- marshal(c, common.HTTPMessage{
 		Body: []byte("bar"),
 	})
-	input <- marshal(c, common.HttpMessage{
+	input <- marshal(c, common.HTTPMessage{
 		EOF: true,
 	})
 
-	var response common.HttpMessage
+	var response common.HTTPMessage
 	unmarshal(c, <-output, &response)
 	c.Assert(response.Code, Equals, 200)
-	response = common.HttpMessage{}
+	response = common.HTTPMessage{}
 
 	//Second message will have the payload
 	unmarshal(c, <-output, &response)
 	c.Assert(string(response.Body), Equals, "foobar")
 }
 
-func unmarshal(c *C, msg common.Message, httpMessage *common.HttpMessage) {
+func unmarshal(c *C, msg common.Message, httpMessage *common.HTTPMessage) {
 	if err := json.Unmarshal([]byte(msg.Body), httpMessage); err != nil {
 		c.Fatal(err)
 	}

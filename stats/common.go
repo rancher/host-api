@@ -9,7 +9,7 @@ import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/google/cadvisor/client"
 	info "github.com/google/cadvisor/info/v1"
-	"github.com/rancherio/host-api/config"
+	"github.com/rancher/host-api/config"
 )
 
 func pathParts(path string) []string {
