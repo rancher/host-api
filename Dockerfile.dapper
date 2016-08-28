@@ -24,7 +24,7 @@ RUN apt-get install -y iptables
 COPY ./scripts/wrapdocker /usr/local/bin/
 
 ENV DAPPER_SOURCE /go/src/github.com/rancher/host-api
-ENV DAPPER_OUTPUT ./dist
+ENV DAPPER_OUTPUT ./dist ./bin
 ENV DAPPER_RUN_ARGS --privileged
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 
