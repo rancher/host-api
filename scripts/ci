@@ -7,3 +7,4 @@ cd $(dirname $0)/..
 ./scripts/build
 ./scripts/test
 ./scripts/validate
+./scripts/package
