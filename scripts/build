@@ -8,3 +8,4 @@ if [ -f ./build/bootstrap.envs ];then
 fi
 
 go build -ldflags "-linkmode external -extldflags -static -s" -o bin/host-api
+cp -f scripts/lib/net-util.sh bin/net-util.sh

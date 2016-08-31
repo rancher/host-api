@@ -85,13 +85,21 @@ func main() {
 
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}
+	handlers["/v2-beta/logs/"] = &logs.LogsHandler{}
 	handlers["/v1/stats/"] = &stats.StatsHandler{}
+	handlers["/v2-beta/stats/"] = &stats.StatsHandler{}
 	handlers["/v1/hoststats/"] = &stats.HostStatsHandler{}
+	handlers["/v2-beta/hoststats/"] = &stats.HostStatsHandler{}
 	handlers["/v1/containerstats/"] = &stats.ContainerStatsHandler{}
+	handlers["/v2-beta/containerstats/"] = &stats.ContainerStatsHandler{}
 	handlers["/v1/exec/"] = &exec.ExecHandler{}
+	handlers["/v2-beta/exec/"] = &exec.ExecHandler{}
 	handlers["/v1/console/"] = &console.Handler{}
+	handlers["/v2-beta/console/"] = &console.Handler{}
 	handlers["/v1/dockersocket/"] = &dockersocketproxy.Handler{}
+	handlers["/v2-beta/dockersocket/"] = &dockersocketproxy.Handler{}
 	handlers["/v1/container-proxy/"] = &proxy.Handler{}
+	handlers["/v2-beta/container-proxy/"] = &proxy.Handler{}
 	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, handlers)
 }
 
