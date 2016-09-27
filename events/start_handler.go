@@ -84,8 +84,6 @@ func setupResolvConf(container *docker.Container) error {
 
 		if strings.Contains(text, RancherNameserver) {
 			nameserverSet = true
-		} else if strings.HasPrefix(text, "nameserver") {
-			text = "# " + text
 		}
 
 		if strings.HasPrefix(text, "search") {
