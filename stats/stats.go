@@ -10,13 +10,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	info "github.com/google/cadvisor/info/v1"
 
-	"github.com/google/cadvisor/client"
-	"github.com/rancher/host-api/config"
+	"github.com/google/cadvisor/manager"
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
 )
 
 type StatsHandler struct {
+	CadvisorManager *manager.Manager
 }
 
 func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessages <-chan string, response chan<- common.Message) {
@@ -34,11 +34,11 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		id = parts[2]
 	}
 
-	c, err := client.NewClient(config.Config.CAdvisorUrl)
-	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
-		return
-	}
+	//c, err := client.NewClient(config.Config.CAdvisorUrl)
+	//if err != nil {
+	//	log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
+	//	return
+	//}
 
 	reader, writer := io.Pipe()
 
@@ -68,10 +68,10 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		}
 	}(reader)
 
-	count := config.Config.NumStats
+	count := 1
 
 	for {
-		machineInfo, err := c.MachineInfo()
+		machineInfo, err := (*(s.CadvisorManager)).GetMachineInfo()
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Error getting machine info.")
 			return
@@ -79,7 +79,7 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 
 		memLimit := machineInfo.MemoryCapacity
 
-		containerInfo, err := getContainerStats(c, count, id)
+		containerInfo, err := getContainerStats(count, id)
 		if err != nil {
 			return
 		}

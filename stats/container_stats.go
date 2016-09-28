@@ -7,12 +7,12 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/google/cadvisor/client"
 	info "github.com/google/cadvisor/info/v1"
 
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
+	"github.com/rancher/host-api/cadvisor"
 )
 
 type ContainerStatsHandler struct {
@@ -57,11 +57,11 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		return
 	}
 
-	c, err := client.NewClient(config.Config.CAdvisorUrl)
-	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
-		return
-	}
+	//c, err := client.NewClient(config.Config.CAdvisorUrl)
+	//if err != nil {
+	//	log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
+	//	return
+	//}
 
 	reader, writer := io.Pipe()
 
@@ -91,35 +91,29 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		}
 	}(reader)
 
-	count := config.Config.NumStats
+	count := 1
 
 	for {
-		machineInfo, err := c.MachineInfo()
-		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Error getting machine info.")
-			return
-		}
-
-		memLimit := machineInfo.MemoryCapacity
+		memLimit := cadvisor.MemoryLimits
 
 		infos := []info.ContainerInfo{}
 
 		if id != "" {
-			cInfo, err := getContainerStats(c, count, id)
+			cInfo, err := getContainerStats(count, id)
 			if err != nil {
 				log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting container info.")
 				return
 			}
 			infos = append(infos, *cInfo)
 		} else {
-			cInfos, err := c.AllDockerContainers(&info.ContainerInfoRequest{
-				NumStats: count,
-			})
+			cInfos, err := GetAllDockerContainers(count)
 			if err != nil {
 				log.WithFields(log.Fields{"error": err}).Error("Error getting all container info.")
 				return
 			}
-			infos = append(infos, cInfos...)
+			for _, in := range cInfos {
+				infos = append(infos, *in)
+			}
 		}
 
 		if count == 1 {
