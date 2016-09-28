@@ -1,21 +1,15 @@
 package cadvisor
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/google/cadvisor/cache/memory"
 	"github.com/google/cadvisor/container"
-	//"github.com/google/cadvisor/manager"
 	"github.com/google/cadvisor/storage"
 	"github.com/google/cadvisor/utils/sysfs"
-	"net/http"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
 	"time"
+	"strings"
 )
 
 type metricSetValue struct {
@@ -52,9 +46,6 @@ func GetCadvisorManager() (*Manager, error) {
 		return nil, err
 	}
 	containerManager, err := New(memoryStorage, sysFs, 60*time.Second, true, ignoreMetrics.MetricSet, nil)
-	if err := containerManager.Start(); err != nil {
-		return nil, err
-	}
 	return &containerManager, nil
 }
 
@@ -71,43 +62,20 @@ func NewMemoryStorage() (*memory.InMemoryCache, error) {
 	return memory.New(*storageDuration, backendStorage), nil
 }
 
-func createCollectorHttpClient(collectorCert, collectorKey string) http.Client {
-	//Enable accessing insecure endpoints. We should be able to access metrics from any endpoint
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
+func StartUp() (error) {
+	cadvisorManager, err := GetCadvisorManager()
+	if err != nil {
+		return err
 	}
-
-	if collectorCert != "" {
-		if collectorKey == "" {
-			glog.Fatal("The collector_key value must be specified if the collector_cert value is set.")
-		}
-		cert, err := tls.LoadX509KeyPair(collectorCert, collectorKey)
-		if err != nil {
-			glog.Fatalf("Failed to use the collector certificate and key: %s", err)
-		}
-
-		tlsConfig.Certificates = []tls.Certificate{cert}
-		tlsConfig.BuildNameToCertificate()
+	if err := (*cadvisorManager).Start(); err != nil {
+		return err
 	}
-
-	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
+	machineInfo, err := GetMachineInfo()
+	if err != nil {
+		return err
 	}
+	MemoryLimits = machineInfo.MemoryCapacity
+	glog.Infof("Starting recovery of all containers")
 
-	return http.Client{Transport: transport}
-}
-
-func installSignalHandler(containerManager Manager) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
-
-	// Block until a signal is received.
-	go func() {
-		sig := <-c
-		if err := containerManager.Stop(); err != nil {
-			glog.Errorf("Failed to stop container manager: %v", err)
-		}
-		glog.Infof("Exiting given signal: %v", sig)
-		os.Exit(0)
-	}()
+	return nil
 }

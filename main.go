@@ -83,18 +83,10 @@ func main() {
 		var block chan bool
 		<-block
 	}
-	cadvisorManager, err := cadvisor.GetCadvisorManager()
-	if err != nil {
-		logrus.Fatal(err)
+
+	if err := cadvisor.StartUp(); err != nil {
+		logrus.Error(err)
 	}
-	if err := (*cadvisorManager).Start(); err != nil {
-		logrus.Fatal(err)
-	}
-	machineInfo, err := cadvisor.GetMachineInfo()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	cadvisor.MemoryLimits = machineInfo.MemoryCapacity
 
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}

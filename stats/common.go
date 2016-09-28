@@ -68,6 +68,7 @@ func getContainerStats(count int, id string) (*info.ContainerInfo, error) {
 		containerInfo = i
 
 	} else {
+		id = "/docker/" + id
 		i, err := GetDockerContainerInfo(id, count)
 		if err != nil {
 			// Try old approach

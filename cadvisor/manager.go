@@ -37,7 +37,7 @@ import (
 	"github.com/google/cadvisor/info/v2"
 	"github.com/google/cadvisor/machine"
 	"github.com/google/cadvisor/manager/watcher"
-	//rawwatcher "github.com/google/cadvisor/manager/watcher/raw"
+	rawwatcher "github.com/google/cadvisor/manager/watcher/raw"
 	rktwatcher "github.com/google/cadvisor/manager/watcher/rkt"
 	"github.com/google/cadvisor/utils/oomparser"
 	"github.com/google/cadvisor/utils/sysfs"
@@ -47,6 +47,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/Sirupsen/logrus"
 )
 
 var gInterval = 1 * time.Minute
@@ -175,7 +176,7 @@ func New(memoryCache *memory.InMemoryCache, sysfs sysfs.SysFs, maxHousekeepingIn
 	// Register for new subcontainers.
 	eventsChannel := make(chan watcher.ContainerEvent, 16)
 
-	newManager := &manager{
+	newManager := &ConcreteManager{
 		containers:               make(map[namespacedContainerName]*containerData),
 		quitChannels:             make([]chan error, 0, 2),
 		memoryCache:              memoryCache,
@@ -217,7 +218,7 @@ type namespacedContainerName struct {
 	Name string
 }
 
-type manager struct {
+type ConcreteManager struct {
 	containers               map[namespacedContainerName]*containerData
 	containersLock           sync.RWMutex
 	memoryCache              *memory.InMemoryCache
@@ -237,7 +238,12 @@ type manager struct {
 }
 
 // Start the container manager.
-func (self *manager) Start() error {
+func (self *ConcreteManager) Start() error {
+	//err := self.GetDockerFactory()
+	//if err != nil {
+	//	glog.Warningf("Docker container factory registration failed: %v.", err)
+	//}
+
 	err := docker.Register(self, self.fsInfo, self.ignoreMetrics)
 	if err != nil {
 		glog.Warningf("Docker container factory registration failed: %v.", err)
@@ -264,34 +270,38 @@ func (self *manager) Start() error {
 		glog.Errorf("Registration of the raw container factory failed: %v", err)
 	}
 
-	//
-	//rawWatcher, err := rawwatcher.NewRawContainerWatcher()
-	//if err != nil {
-	//	return err
-	//}
-	//self.containerWatchers = append(self.containerWatchers, rawWatcher)
-	//
-	//// Watch for OOMs.
-	//err = self.watchForNewOoms()
-	//if err != nil {
-	//	glog.Warningf("Could not configure a source for OOM detection, disabling OOM events: %v", err)
-	//}
-	//
-	//// If there are no factories, don't start any housekeeping and serve the information we do have.
-	//if !container.HasFactories() {
-	//	return nil
-	//}
 
+	rawWatcher, err := rawwatcher.NewRawContainerWatcher()
+	if err != nil {
+		return err
+	}
+	self.containerWatchers = append(self.containerWatchers, rawWatcher)
+
+	// Watch for OOMs.
+	err = self.watchForNewOoms()
+	if err != nil {
+		glog.Warningf("Could not configure a source for OOM detection, disabling OOM events: %v", err)
+	}
+
+	// If there are no factories, don't start any housekeeping and serve the information we do have.
+	if !container.HasFactories() {
+		return nil
+	}
 	// Create root and then recover all containers.
 	err = self.createContainer("/", watcher.Raw)
 	if err != nil {
 		return err
 	}
-	//glog.Infof("Starting recovery of all containers")
-	//err = self.detectSubcontainers("/")
-	//if err != nil {
-	//	return err
-	//}
+	go func(){
+		for {
+			logrus.Info("Plz debug me")
+			err := self.DetectSubcontainers("/")
+			if err != nil {
+				logrus.Error(err)
+			}
+			time.Sleep(5*time.Second)
+		}
+	}()
 	//glog.Infof("Recovery completed")
 	//
 	//// Watch for new container.
@@ -310,7 +320,7 @@ func (self *manager) Start() error {
 	return nil
 }
 
-func (self *manager) Stop() error {
+func (self *ConcreteManager) Stop() error {
 	// Stop and wait on all quit channels.
 	for i, c := range self.quitChannels {
 		// Send the exit signal and wait on the thread to exit (by closing the channel).
@@ -326,7 +336,7 @@ func (self *manager) Stop() error {
 	return nil
 }
 
-func (self *manager) globalHousekeeping(quit chan error) {
+func (self *ConcreteManager) globalHousekeeping(quit chan error) {
 	// Long housekeeping is either 100ms or half of the housekeeping interval.
 	longHousekeeping := 100 * time.Millisecond
 	if *globalHousekeepingInterval/2 < longHousekeeping {
@@ -340,7 +350,7 @@ func (self *manager) globalHousekeeping(quit chan error) {
 			start := time.Now()
 
 			// Check for new containers.
-			err := self.detectSubcontainers("/")
+			err := self.DetectSubcontainers("/")
 			if err != nil {
 				glog.Errorf("Failed to detect containers: %s", err)
 			}
@@ -359,7 +369,7 @@ func (self *manager) globalHousekeeping(quit chan error) {
 	}
 }
 
-func (self *manager) getContainerData(containerName string) (*containerData, error) {
+func (self *ConcreteManager) getContainerData(containerName string) (*containerData, error) {
 	var cont *containerData
 	var ok bool
 	func() {
@@ -377,7 +387,7 @@ func (self *manager) getContainerData(containerName string) (*containerData, err
 	return cont, nil
 }
 
-func (self *manager) GetDerivedStats(containerName string, options v2.RequestOptions) (map[string]v2.DerivedStats, error) {
+func (self *ConcreteManager) GetDerivedStats(containerName string, options v2.RequestOptions) (map[string]v2.DerivedStats, error) {
 	conts, err := self.getRequestedContainers(containerName, options)
 	if err != nil {
 		return nil, err
@@ -394,7 +404,7 @@ func (self *manager) GetDerivedStats(containerName string, options v2.RequestOpt
 	return stats, errs.OrNil()
 }
 
-func (self *manager) GetContainerSpec(containerName string, options v2.RequestOptions) (map[string]v2.ContainerSpec, error) {
+func (self *ConcreteManager) GetContainerSpec(containerName string, options v2.RequestOptions) (map[string]v2.ContainerSpec, error) {
 	conts, err := self.getRequestedContainers(containerName, options)
 	if err != nil {
 		return nil, err
@@ -413,12 +423,12 @@ func (self *manager) GetContainerSpec(containerName string, options v2.RequestOp
 }
 
 // Get V2 container spec from v1 container info.
-func (self *manager) getV2Spec(cinfo *containerInfo) v2.ContainerSpec {
+func (self *ConcreteManager) getV2Spec(cinfo *containerInfo) v2.ContainerSpec {
 	spec := self.getAdjustedSpec(cinfo)
 	return v2.ContainerSpecFromV1(&spec, cinfo.Aliases, cinfo.Namespace)
 }
 
-func (self *manager) getAdjustedSpec(cinfo *containerInfo) info.ContainerSpec {
+func (self *ConcreteManager) getAdjustedSpec(cinfo *containerInfo) info.ContainerSpec {
 	spec := cinfo.Spec
 
 	// Set default value to an actual value
@@ -431,7 +441,7 @@ func (self *manager) getAdjustedSpec(cinfo *containerInfo) info.ContainerSpec {
 	return spec
 }
 
-func (self *manager) GetContainerInfo(containerName string, query *info.ContainerInfoRequest) (*info.ContainerInfo, error) {
+func (self *ConcreteManager) GetContainerInfo(containerName string, query *info.ContainerInfoRequest) (*info.ContainerInfo, error) {
 	cont, err := self.getContainerData(containerName)
 	if err != nil {
 		return nil, err
@@ -439,7 +449,7 @@ func (self *manager) GetContainerInfo(containerName string, query *info.Containe
 	return self.containerDataToContainerInfo(cont, query)
 }
 
-func (self *manager) GetContainerInfoV2(containerName string, options v2.RequestOptions) (map[string]v2.ContainerInfo, error) {
+func (self *ConcreteManager) GetContainerInfoV2(containerName string, options v2.RequestOptions) (map[string]v2.ContainerInfo, error) {
 	containers, err := self.getRequestedContainers(containerName, options)
 	if err != nil {
 		return nil, err
@@ -473,7 +483,7 @@ func (self *manager) GetContainerInfoV2(containerName string, options v2.Request
 	return infos, errs.OrNil()
 }
 
-func (self *manager) containerDataToContainerInfo(cont *containerData, query *info.ContainerInfoRequest) (*info.ContainerInfo, error) {
+func (self *ConcreteManager) containerDataToContainerInfo(cont *containerData, query *info.ContainerInfoRequest) (*info.ContainerInfo, error) {
 	// Get the info from the container.
 	cinfo, err := cont.GetInfo()
 	if err != nil {
@@ -495,7 +505,7 @@ func (self *manager) containerDataToContainerInfo(cont *containerData, query *in
 	return ret, nil
 }
 
-func (self *manager) getContainer(containerName string) (*containerData, error) {
+func (self *ConcreteManager) getContainer(containerName string) (*containerData, error) {
 	self.containersLock.RLock()
 	defer self.containersLock.RUnlock()
 	cont, ok := self.containers[namespacedContainerName{Name: containerName}]
@@ -505,7 +515,7 @@ func (self *manager) getContainer(containerName string) (*containerData, error) 
 	return cont, nil
 }
 
-func (self *manager) getSubcontainers(containerName string) map[string]*containerData {
+func (self *ConcreteManager) getSubcontainers(containerName string) map[string]*containerData {
 	self.containersLock.RLock()
 	defer self.containersLock.RUnlock()
 	containersMap := make(map[string]*containerData, len(self.containers))
@@ -521,7 +531,7 @@ func (self *manager) getSubcontainers(containerName string) map[string]*containe
 	return containersMap
 }
 
-func (self *manager) SubcontainersInfo(containerName string, query *info.ContainerInfoRequest) ([]*info.ContainerInfo, error) {
+func (self *ConcreteManager) SubcontainersInfo(containerName string, query *info.ContainerInfoRequest) ([]*info.ContainerInfo, error) {
 	containersMap := self.getSubcontainers(containerName)
 
 	containers := make([]*containerData, 0, len(containersMap))
@@ -531,7 +541,7 @@ func (self *manager) SubcontainersInfo(containerName string, query *info.Contain
 	return self.containerDataSliceToContainerInfoSlice(containers, query)
 }
 
-func (self *manager) getAllDockerContainers() map[string]*containerData {
+func (self *ConcreteManager) getAllDockerContainers() map[string]*containerData {
 	self.containersLock.RLock()
 	defer self.containersLock.RUnlock()
 	containers := make(map[string]*containerData, len(self.containers))
@@ -545,7 +555,7 @@ func (self *manager) getAllDockerContainers() map[string]*containerData {
 	return containers
 }
 
-func (self *manager) AllDockerContainers(query *info.ContainerInfoRequest) (map[string]info.ContainerInfo, error) {
+func (self *ConcreteManager) AllDockerContainers(query *info.ContainerInfoRequest) (map[string]info.ContainerInfo, error) {
 	containers := self.getAllDockerContainers()
 
 	output := make(map[string]info.ContainerInfo, len(containers))
@@ -559,7 +569,7 @@ func (self *manager) AllDockerContainers(query *info.ContainerInfoRequest) (map[
 	return output, nil
 }
 
-func (self *manager) getDockerContainer(containerName string) (*containerData, error) {
+func (self *ConcreteManager) getDockerContainer(containerName string) (*containerData, error) {
 	self.containersLock.RLock()
 	defer self.containersLock.RUnlock()
 
@@ -574,7 +584,7 @@ func (self *manager) getDockerContainer(containerName string) (*containerData, e
 	return cont, nil
 }
 
-func (self *manager) DockerContainer(containerName string, query *info.ContainerInfoRequest) (info.ContainerInfo, error) {
+func (self *ConcreteManager) DockerContainer(containerName string, query *info.ContainerInfoRequest) (info.ContainerInfo, error) {
 	container, err := self.getDockerContainer(containerName)
 	if err != nil {
 		return info.ContainerInfo{}, err
@@ -587,7 +597,7 @@ func (self *manager) DockerContainer(containerName string, query *info.Container
 	return *inf, nil
 }
 
-func (self *manager) containerDataSliceToContainerInfoSlice(containers []*containerData, query *info.ContainerInfoRequest) ([]*info.ContainerInfo, error) {
+func (self *ConcreteManager) containerDataSliceToContainerInfoSlice(containers []*containerData, query *info.ContainerInfoRequest) ([]*info.ContainerInfo, error) {
 	if len(containers) == 0 {
 		return nil, fmt.Errorf("no containers found")
 	}
@@ -606,7 +616,7 @@ func (self *manager) containerDataSliceToContainerInfoSlice(containers []*contai
 	return output, nil
 }
 
-func (self *manager) GetRequestedContainersInfo(containerName string, options v2.RequestOptions) (map[string]*info.ContainerInfo, error) {
+func (self *ConcreteManager) GetRequestedContainersInfo(containerName string, options v2.RequestOptions) (map[string]*info.ContainerInfo, error) {
 	containers, err := self.getRequestedContainers(containerName, options)
 	if err != nil {
 		return nil, err
@@ -626,7 +636,7 @@ func (self *manager) GetRequestedContainersInfo(containerName string, options v2
 	return containersMap, errs.OrNil()
 }
 
-func (self *manager) getRequestedContainers(containerName string, options v2.RequestOptions) (map[string]*containerData, error) {
+func (self *ConcreteManager) getRequestedContainers(containerName string, options v2.RequestOptions) (map[string]*containerData, error) {
 	containersMap := make(map[string]*containerData)
 	switch options.IdType {
 	case v2.TypeName:
@@ -662,7 +672,7 @@ func (self *manager) getRequestedContainers(containerName string, options v2.Req
 	return containersMap, nil
 }
 
-func (self *manager) GetFsInfo(label string) ([]v2.FsInfo, error) {
+func (self *ConcreteManager) GetFsInfo(label string) ([]v2.FsInfo, error) {
 	var empty time.Time
 	// Get latest data from filesystems hanging off root container.
 	stats, err := self.memoryCache.RecentStats("/", empty, empty, 1)
@@ -708,12 +718,12 @@ func (self *manager) GetFsInfo(label string) ([]v2.FsInfo, error) {
 	return fsInfo, nil
 }
 
-func (m *manager) GetMachineInfo() (*info.MachineInfo, error) {
+func (m *ConcreteManager) GetMachineInfo() (*info.MachineInfo, error) {
 	// Copy and return the MachineInfo.
 	return &m.machineInfo, nil
 }
 
-func (m *manager) GetVersionInfo() (*info.VersionInfo, error) {
+func (m *ConcreteManager) GetVersionInfo() (*info.VersionInfo, error) {
 	// TODO: Consider caching this and periodically updating.  The VersionInfo may change if
 	// the docker daemon is started after the cAdvisor client is created.  Caching the value
 	// would be helpful so we would be able to return the last known docker version if
@@ -721,7 +731,7 @@ func (m *manager) GetVersionInfo() (*info.VersionInfo, error) {
 	return getVersionInfo()
 }
 
-func (m *manager) Exists(containerName string) bool {
+func (m *ConcreteManager) Exists(containerName string) bool {
 	m.containersLock.Lock()
 	defer m.containersLock.Unlock()
 
@@ -736,7 +746,7 @@ func (m *manager) Exists(containerName string) bool {
 	return false
 }
 
-func (m *manager) GetProcessList(containerName string, options v2.RequestOptions) ([]v2.ProcessInfo, error) {
+func (m *ConcreteManager) GetProcessList(containerName string, options v2.RequestOptions) ([]v2.ProcessInfo, error) {
 	// override recursive. Only support single container listing.
 	options.Recursive = false
 	conts, err := m.getRequestedContainers(containerName, options)
@@ -757,7 +767,7 @@ func (m *manager) GetProcessList(containerName string, options v2.RequestOptions
 	return ps, nil
 }
 
-func (m *manager) registerCollectors(collectorConfigs map[string]string, cont *containerData) error {
+func (m *ConcreteManager) registerCollectors(collectorConfigs map[string]string, cont *containerData) error {
 	for k, v := range collectorConfigs {
 		configFile, err := cont.ReadFile(v, m.inHostNamespace)
 		if err != nil {
@@ -797,7 +807,7 @@ func (m *manager) registerCollectors(collectorConfigs map[string]string, cont *c
 // Ex: rkt handler will want to take priority over the raw handler, but the raw handler might be created first.
 
 // Only allow raw handler to be overridden
-func (m *manager) overrideContainer(containerName string, watchSource watcher.ContainerWatchSource) error {
+func (m *ConcreteManager) overrideContainer(containerName string, watchSource watcher.ContainerWatchSource) error {
 	m.containersLock.Lock()
 	defer m.containersLock.Unlock()
 
@@ -822,14 +832,14 @@ func (m *manager) overrideContainer(containerName string, watchSource watcher.Co
 }
 
 // Create a container.
-func (m *manager) createContainer(containerName string, watchSource watcher.ContainerWatchSource) error {
+func (m *ConcreteManager) createContainer(containerName string, watchSource watcher.ContainerWatchSource) error {
 	m.containersLock.Lock()
 	defer m.containersLock.Unlock()
 
 	return m.createContainerLocked(containerName, watchSource)
 }
 
-func (m *manager) createContainerLocked(containerName string, watchSource watcher.ContainerWatchSource) error {
+func (m *ConcreteManager) createContainerLocked(containerName string, watchSource watcher.ContainerWatchSource) error {
 	namespacedName := namespacedContainerName{
 		Name: containerName,
 	}
@@ -902,14 +912,14 @@ func (m *manager) createContainerLocked(containerName string, watchSource watche
 	return nil
 }
 
-func (m *manager) destroyContainer(containerName string) error {
+func (m *ConcreteManager) destroyContainer(containerName string) error {
 	m.containersLock.Lock()
 	defer m.containersLock.Unlock()
 
 	return m.destroyContainerLocked(containerName)
 }
 
-func (m *manager) destroyContainerLocked(containerName string) error {
+func (m *ConcreteManager) destroyContainerLocked(containerName string) error {
 	namespacedName := namespacedContainerName{
 		Name: containerName,
 	}
@@ -953,7 +963,7 @@ func (m *manager) destroyContainerLocked(containerName string) error {
 }
 
 // Detect all containers that have been added or deleted from the specified container.
-func (m *manager) getContainersDiff(containerName string) (added []info.ContainerReference, removed []info.ContainerReference, err error) {
+func (m *ConcreteManager) getContainersDiff(containerName string) (added []info.ContainerReference, removed []info.ContainerReference, err error) {
 	m.containersLock.RLock()
 	defer m.containersLock.RUnlock()
 
@@ -999,7 +1009,7 @@ func (m *manager) getContainersDiff(containerName string) (added []info.Containe
 }
 
 // Detect the existing subcontainers and reflect the setup here.
-func (m *manager) detectSubcontainers(containerName string) error {
+func (m *ConcreteManager) DetectSubcontainers(containerName string) error {
 	added, removed, err := m.getContainersDiff(containerName)
 	if err != nil {
 		return err
@@ -1007,6 +1017,7 @@ func (m *manager) detectSubcontainers(containerName string) error {
 
 	// Add the new containers.
 	for _, cont := range added {
+		logrus.Info(cont.Name)
 		err = m.createContainer(cont.Name, watcher.Raw)
 		if err != nil {
 			glog.Errorf("Failed to create existing container: %s: %s", cont.Name, err)
@@ -1025,7 +1036,7 @@ func (m *manager) detectSubcontainers(containerName string) error {
 }
 
 // Watches for new containers started in the system. Runs forever unless there is a setup error.
-func (self *manager) watchForNewContainers(quit chan error) error {
+func (self *ConcreteManager) watchForNewContainers(quit chan error) error {
 	for _, watcher := range self.containerWatchers {
 		err := watcher.Start(self.eventsChannel)
 		if err != nil {
@@ -1034,7 +1045,7 @@ func (self *manager) watchForNewContainers(quit chan error) error {
 	}
 
 	// There is a race between starting the watch and new container creation so we do a detection before we read new containers.
-	err := self.detectSubcontainers("/")
+	err := self.DetectSubcontainers("/")
 	if err != nil {
 		return err
 	}
@@ -1083,7 +1094,7 @@ func (self *manager) watchForNewContainers(quit chan error) error {
 	return nil
 }
 
-func (self *manager) watchForNewOoms() error {
+func (self *ConcreteManager) watchForNewOoms() error {
 	glog.Infof("Started watching for new ooms in manager")
 	outStream := make(chan *oomparser.OomInstance, 10)
 	oomLog, err := oomparser.New()
@@ -1127,17 +1138,17 @@ func (self *manager) watchForNewOoms() error {
 }
 
 // can be called by the api which will take events returned on the channel
-func (self *manager) WatchForEvents(request *events.Request) (*events.EventChannel, error) {
+func (self *ConcreteManager) WatchForEvents(request *events.Request) (*events.EventChannel, error) {
 	return self.eventHandler.WatchEvents(request)
 }
 
 // can be called by the api which will return all events satisfying the request
-func (self *manager) GetPastEvents(request *events.Request) ([]*info.Event, error) {
+func (self *ConcreteManager) GetPastEvents(request *events.Request) ([]*info.Event, error) {
 	return self.eventHandler.GetEvents(request)
 }
 
 // called by the api when a client is no longer listening to the channel
-func (self *manager) CloseEventChannel(watch_id int) {
+func (self *ConcreteManager) CloseEventChannel(watch_id int) {
 	self.eventHandler.StopWatch(watch_id)
 }
 
@@ -1188,15 +1199,15 @@ func parseEventsStoragePolicy() events.StoragePolicy {
 	return policy
 }
 
-func (m *manager) DockerImages() ([]info.DockerImage, error) {
+func (m *ConcreteManager) DockerImages() ([]info.DockerImage, error) {
 	return docker.Images()
 }
 
-func (m *manager) DockerInfo() (info.DockerStatus, error) {
+func (m *ConcreteManager) DockerInfo() (info.DockerStatus, error) {
 	return docker.Status()
 }
 
-func (m *manager) DebugInfo() map[string][]string {
+func (m *ConcreteManager) DebugInfo() map[string][]string {
 	debugInfo := container.DebugInfo()
 
 	// Get unique containers.

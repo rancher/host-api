@@ -9,6 +9,7 @@ import (
 	"github.com/google/cadvisor/manager/watcher"
 	"golang.org/x/net/context"
 	"os"
+	"fmt"
 )
 
 func GetRootContainerInfo(count int) (*info.ContainerInfo, error) {
@@ -72,6 +73,7 @@ func GetDockerContainerInfo(id string, count int) (*info.ContainerInfo, error) {
 		stats = append(stats, stat)
 	}
 	containerInfo.Stats = stats
+	fmt.Printf("%+v", stats[0])
 	return &containerInfo, nil
 }
 
@@ -91,7 +93,7 @@ func GetAllDockerContainers(count int) (map[string]*info.ContainerInfo, error) {
 	}
 	ret := map[string]*info.ContainerInfo{}
 	for _, cont := range contList {
-		handler, accept, err := container.NewContainerHandler(cont.ID, watcher.Raw, inHostNamespace)
+		handler, accept, err := container.NewContainerHandler("/docker/"+cont.ID, watcher.Raw, inHostNamespace)
 		if err != nil {
 			return nil, err
 		}

@@ -2,7 +2,7 @@ package cadvisor
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/google/cadvisor/container/docker"
+	"github.com/rancher/host-api/cadvisor/docker"
 	"github.com/google/cadvisor/container/rkt"
 	"github.com/google/cadvisor/fs"
 	info "github.com/google/cadvisor/info/v1"
