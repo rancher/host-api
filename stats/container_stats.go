@@ -9,10 +9,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 	info "github.com/google/cadvisor/info/v1"
 
+	"github.com/rancher/host-api/cadvisor"
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
-	"github.com/rancher/host-api/cadvisor"
 )
 
 type ContainerStatsHandler struct {

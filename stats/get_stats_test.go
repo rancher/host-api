@@ -73,7 +73,7 @@ func (s *ComputeTestSuite) TestDockerContainerStats(c *check.C) {
 			Force:         true,
 		})
 	}()
-	data, err := GetDockerContainerInfo("/docker/" + newCtr.ID, 30)
+	data, err := GetDockerContainerInfo("/docker/"+newCtr.ID, 30)
 	if err != nil {
 		c.Fatal(err)
 	}

@@ -42,7 +42,7 @@ import (
 
 // Housekeeping interval.
 var reader = false
-var interval = 1*time.Second
+var interval = 1 * time.Second
 var enableLoadReader = &reader
 var HousekeepingInterval = &interval
 

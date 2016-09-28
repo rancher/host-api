@@ -49,7 +49,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 )
 
-var gInterval = 1*time.Minute
+var gInterval = 1 * time.Minute
 var usage = false
 var ageLimit = "default=24h"
 var eventLimit = "default=100000"

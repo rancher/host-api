@@ -1,14 +1,14 @@
 package stats
 
 import (
+	"github.com/docker/engine-api/client"
+	"github.com/docker/engine-api/types"
 	"github.com/golang/glog"
 	"github.com/google/cadvisor/container"
 	info "github.com/google/cadvisor/info/v1"
 	"github.com/google/cadvisor/manager/watcher"
-	"os"
-	"github.com/docker/engine-api/client"
 	"golang.org/x/net/context"
-	"github.com/docker/engine-api/types"
+	"os"
 )
 
 func GetRootContainerInfo(count int) (*info.ContainerInfo, error) {

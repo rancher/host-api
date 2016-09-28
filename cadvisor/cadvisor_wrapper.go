@@ -111,5 +111,3 @@ func installSignalHandler(containerManager Manager) {
 		os.Exit(0)
 	}()
 }
-
-
