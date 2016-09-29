@@ -25,6 +25,7 @@ import (
 	"github.com/golang/glog"
 
 	rclient "github.com/rancher/go-rancher/client"
+	"github.com/rancher/host-api/cadvisor"
 	"github.com/rancher/websocket-proxy/backend"
 )
 
@@ -83,6 +84,10 @@ func main() {
 		<-block
 	}
 
+	if err := cadvisor.StartUp(); err != nil {
+		logrus.Error(err)
+	}
+
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &logs.LogsHandler{}
 	handlers["/v2-beta/logs/"] = &logs.LogsHandler{}
@@ -97,8 +102,8 @@ func main() {
 	handlers["/v1/console/"] = &console.Handler{}
 	handlers["/v2-beta/console/"] = &console.Handler{}
 	handlers["/v1/dockersocket/"] = &dockersocketproxy.Handler{}
-	handlers["/v2-beta/dockersocket/"] = &dockersocketproxy.Handler{}
 	handlers["/v1/container-proxy/"] = &proxy.Handler{}
+	handlers["/v2-beta/dockersocket/"] = &dockersocketproxy.Handler{}
 	handlers["/v2-beta/container-proxy/"] = &proxy.Handler{}
 	backend.ConnectToProxy(tokenResponse.Url+"?token="+tokenResponse.Token, handlers)
 }

@@ -7,7 +7,6 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	dockerClient "github.com/fsouza/go-dockerclient"
-	"github.com/google/cadvisor/client"
 	info "github.com/google/cadvisor/info/v1"
 	"github.com/rancher/host-api/config"
 )
@@ -59,35 +58,31 @@ func parseRequestToken(tokenString string, parsedPublicKey interface{}) (*jwt.To
 	})
 }
 
-func getContainerStats(c *client.Client, count int, id string) (*info.ContainerInfo, error) {
+func getContainerStats(count int, id string) (*info.ContainerInfo, error) {
 	var containerInfo *info.ContainerInfo
 	if id == "" {
-		i, err := c.ContainerInfo(id, &info.ContainerInfoRequest{
-			NumStats: count,
-		})
+		i, err := GetRootContainerInfo(count)
 		if err != nil {
 			return nil, err
 		}
 		containerInfo = i
+
 	} else {
-		i, err := c.DockerContainer(id, &info.ContainerInfoRequest{
-			NumStats: count,
-		})
+		id = "/docker/" + id
+		i, err := GetDockerContainerInfo(id, count)
 		if err != nil {
 			// Try old approach
 			container, err := resolveContainer(id)
 			if err != nil {
 				return nil, err
 			}
-			i, err := c.ContainerInfo(container, &info.ContainerInfoRequest{
-				NumStats: count,
-			})
+			i, err := GetDockerContainerInfo(container, count)
 			if err != nil {
 				return nil, err
 			}
 			containerInfo = i
 		} else {
-			containerInfo = &i
+			containerInfo = i
 		}
 	}
 
