@@ -7,12 +7,13 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/google/cadvisor/client"
-	info "github.com/google/cadvisor/info/v1"
 
+	"github.com/docker/engine-api/client"
+	"github.com/docker/engine-api/types"
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
+	"golang.org/x/net/context"
 )
 
 type ContainerStatsHandler struct {
@@ -57,11 +58,12 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		return
 	}
 
-	c, err := client.NewClient(config.Config.CAdvisorUrl)
+	dclient, err := client.NewEnvClient()
 	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
+		log.WithFields(log.Fields{"error": err}).Error("Couldn't get docker client.")
 		return
 	}
+	dclient.UpdateClientVersion("1.22")
 
 	reader, writer := io.Pipe()
 
@@ -91,52 +93,84 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		}
 	}(reader)
 
-	count := config.Config.NumStats
+	count := 1
+	memLimit, err := getMemCapcity()
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting memory capacity.")
+		return
+	}
 
-	for {
-		machineInfo, err := c.MachineInfo()
+	// get single container stats
+	if id != "" {
+		statsReader, err := dclient.ContainerStats(context.Background(), id, true)
+		defer statsReader.Close()
 		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Error getting machine info.")
+			log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
 			return
 		}
+		bufioReader := bufio.NewReader(statsReader)
+		for {
+			infos := []containerInfo{}
+			cInfo, err := getContainerStats(bufioReader, count, id)
 
-		memLimit := machineInfo.MemoryCapacity
-
-		infos := []info.ContainerInfo{}
-
-		if id != "" {
-			cInfo, err := getContainerStats(c, count, id)
 			if err != nil {
 				log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting container info.")
 				return
 			}
-			infos = append(infos, *cInfo)
-		} else {
-			cInfos, err := c.AllDockerContainers(&info.ContainerInfoRequest{
-				NumStats: count,
-			})
-			if err != nil {
-				log.WithFields(log.Fields{"error": err}).Error("Error getting all container info.")
-				return
-			}
-			infos = append(infos, cInfos...)
-		}
-
-		if count == 1 {
+			infos = append(infos, cInfo)
 			for i := range infos {
 				if len(infos[i].Stats) > 0 {
 					infos[i].Stats[0].Timestamp = time.Now()
 				}
 			}
-		}
 
-		err = writeAggregatedStats(id, containerIds, "container", infos, uint64(memLimit), writer)
+			err = writeAggregatedStats(id, containerIds, "container", infos, uint64(memLimit), writer)
+			if err != nil {
+				return
+			}
+
+			time.Sleep(1 * time.Second)
+			count = 1
+		}
+	} else {
+		contList, err := dclient.ContainerList(context.Background(), types.ContainerListOptions{})
 		if err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Can not list containers")
 			return
 		}
+		IDList := []string{}
+		bufioReaders := []*bufio.Reader{}
+		for i := 0; i < len(contList); i++ {
+			statsReader, err := dclient.ContainerStats(context.Background(), contList[i].ID, true)
+			defer statsReader.Close()
+			if err != nil {
+				log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
+				return
+			}
+			bufioReader := bufio.NewReader(statsReader)
+			bufioReaders = append(bufioReaders, bufioReader)
+			IDList = append(IDList, contList[i].ID)
+		}
+		for {
+			infos := []containerInfo{}
+			allInfos, err := getAllDockerContainers(bufioReaders, count, IDList)
+			if err != nil {
+				log.WithFields(log.Fields{"error": err}).Error("Error getting all container info.")
+				return
+			}
+			infos = append(infos, allInfos...)
+			for i := range infos {
+				if len(infos[i].Stats) > 0 {
+					infos[i].Stats[0].Timestamp = time.Now()
+				}
+			}
+			err = writeAggregatedStats(id, containerIds, "container", infos, uint64(memLimit), writer)
+			if err != nil {
+				return
+			}
 
-		time.Sleep(1 * time.Second)
-		count = 1
+			time.Sleep(1 * time.Second)
+		}
 	}
 
 	return
