@@ -6,7 +6,6 @@ import (
 
 	"bufio"
 	"encoding/json"
-	"github.com/Sirupsen/logrus"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/shirou/gopsutil/mem"
 	"time"
@@ -249,10 +248,8 @@ func getContainerInfo(reader *bufio.Reader, count int, id string) (containerInfo
 	contInfo := containerInfo{}
 	contInfo.Id = id
 	stats := []*containerStats{}
-	logrus.Info(count)
 	for i := 0; i < count; i++ {
 		str, err := reader.ReadString([]byte("\n")[0])
-		logrus.Info("debug" + str)
 		if err != nil {
 			return containerInfo{}, err
 		}
@@ -261,7 +258,6 @@ func getContainerInfo(reader *bufio.Reader, count int, id string) (containerInfo
 			return containerInfo{}, err
 		}
 		contStats := convertDockerStats(dockerStats)
-		logrus.Infof("stats %+v", dockerStats)
 		stats = append(stats, contStats)
 	}
 	contInfo.Stats = stats

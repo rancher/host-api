@@ -27,7 +27,7 @@ func getRootContainerInfo(count int) (containerInfo, error) {
 			stats.Cpu.Usage.PerCpu = append(stats.Cpu.Usage.PerCpu, uint64(perStats.User+perStats.System)*1000000000)
 		}
 		if len(cpuStats) > 0 {
-			stats.Cpu.Usage.Total = uint64(cpuStats[0].User+cpuStats[0].System) * 1000000000
+			stats.Cpu.Usage.Total = uint64(cpuStats[0].User+cpuStats[0].System+cpuStats[0].Idle) * 1000000000
 			stats.Cpu.Usage.User = uint64(cpuStats[0].User) * 1000000000
 			stats.Cpu.Usage.System = uint64(cpuStats[0].System) * 1000000000
 		}
