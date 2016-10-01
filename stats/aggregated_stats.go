@@ -24,6 +24,9 @@ func convertToAggregatedStats(id string, containerIds map[string]string, resourc
 		totalAggregatedStat := []AggregatedStat{}
 		for j := 0; j < len(stats[i].Stats); j++ {
 			aggStats := AggregatedStat{stats[i].Id, resourceType, memLimit, stats[i].Stats[j]}
+			if id == "" {
+				aggStats.Id = containerIds[stats[i].Id]
+			}
 			totalAggregatedStat = append(totalAggregatedStat, aggStats)
 		}
 		totalAggregatedStats = append(totalAggregatedStats, totalAggregatedStat)
