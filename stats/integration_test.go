@@ -31,47 +31,18 @@ func TestContainerStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not connect to docker, err: [%v]", err)
 	}
-
-	createContainerOptions := client.CreateContainerOptions{
-		Name: "cadvisortest",
-		Config: &client.Config{
-			Image: "google/cadvisor:v0.22.0",
-		},
-	}
-
-	newCtr, err := c.CreateContainer(createContainerOptions)
-	if err != nil {
-		t.Fatalf("Error creating container, err : [%v]", err)
-	}
-	err = c.StartContainer(newCtr.ID, nil)
-	if err != nil {
-		t.Fatalf("Error starting container, err : [%v]", err)
-	}
-	defer func() {
-		c.StopContainer(newCtr.ID, 1)
-		c.RemoveContainer(client.RemoveContainerOptions{
-			ID:            newCtr.ID,
-			RemoveVolumes: true,
-			Force:         true,
-		})
-	}()
-	newCtr, err = c.InspectContainer(newCtr.ID)
-	if err != nil {
-		t.Fatalf("Error inspecting container, err : [%v]", err)
-	}
-	log.Infof("%+v", newCtr)
 	allCtrs, err := c.ListContainers(client.ListContainersOptions{})
 	if err != nil {
 		t.Fatalf("Error listing all images, err : [%v]", err)
 	}
 	ctrs := []client.APIContainers{}
 	for _, ctr := range allCtrs {
-		if strings.HasPrefix(ctr.Image, "google/cadvisor") {
+		if strings.HasPrefix(ctr.Image, "busybox:1") {
 			ctrs = append(ctrs, ctr)
 		}
 	}
-	if len(ctrs) != 2 {
-		t.Fatalf("Expected 2 containers, but got %v: [%v]", len(ctrs), ctrs)
+	if len(ctrs) != 1 {
+		t.Fatalf("Expected 1 containers, but got %v: [%v]", len(ctrs), ctrs)
 	}
 
 	cIds := map[string]string{}
@@ -85,6 +56,7 @@ func TestContainerStats(t *testing.T) {
 	}
 
 	log.Infof("%+v", cIds)
+	time.Sleep(2 * time.Second)
 
 Outer:
 	for i := 0; i < 5; i++ {
@@ -107,7 +79,7 @@ Outer:
 				t.Fatal(err)
 			}
 			stats := string(msg)
-			if !strings.Contains(stats, "1i1") || !strings.Contains(stats, "1i2") {
+			if !strings.Contains(stats, "1i1") {
 				t.Fatalf("Stats are not working. Output: [%s]", stats)
 			}
 		}

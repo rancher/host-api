@@ -2,18 +2,17 @@ package stats
 
 import (
 	"bufio"
-	"encoding/json"
 	"io"
 	"net/url"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	info "github.com/google/cadvisor/info/v1"
 
-	"github.com/google/cadvisor/client"
-	"github.com/rancher/host-api/config"
+	"github.com/docker/engine-api/client"
+
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
+	"golang.org/x/net/context"
 )
 
 type StatsHandler struct {
@@ -34,11 +33,12 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		id = parts[2]
 	}
 
-	c, err := client.NewClient(config.Config.CAdvisorUrl)
+	dclient, err := client.NewEnvClient()
 	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error("Couldn't get CAdvisor client.")
+		log.WithFields(log.Fields{"error": err}).Error("Couldn't get docker client")
 		return
 	}
+	dclient.UpdateClientVersion("1.22")
 
 	reader, writer := io.Pipe()
 
@@ -68,48 +68,67 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		}
 	}(reader)
 
-	count := config.Config.NumStats
+	count := 1
 
-	for {
-		machineInfo, err := c.MachineInfo()
-		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Error getting machine info.")
-			return
-		}
-
-		memLimit := machineInfo.MemoryCapacity
-
-		containerInfo, err := getContainerStats(c, count, id)
-		if err != nil {
-			return
-		}
-
-		if err := writeStats(containerInfo, memLimit, writer); err != nil {
-			return
-		}
-
-		time.Sleep(1 * time.Second)
-		count = 1
+	memLimit, err := getMemCapcity()
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting memory capacity.")
+		return
 	}
-	return
-}
+	if id == "" {
+		for {
+			infos := []containerInfo{}
 
-func writeStats(info *info.ContainerInfo, memLimit uint64, writer io.Writer) error {
-	for _, stat := range info.Stats {
-		data, err := json.Marshal(stat)
-		if err != nil {
-			return err
+			cInfo, err := getRootContainerInfo(count)
+			if err != nil {
+				return
+			}
+
+			infos = append(infos, cInfo)
+			for i := range infos {
+				if len(infos[i].Stats) > 0 {
+					infos[i].Stats[0].Timestamp = time.Now()
+				}
+			}
+
+			err = writeAggregatedStats("", nil, "host", infos, uint64(memLimit), writer)
+			if err != nil {
+				return
+			}
+
+			time.Sleep(1 * time.Second)
+			count = 1
 		}
-
-		_, err = writer.Write(data)
+	} else {
+		statsReader, err := dclient.ContainerStats(context.Background(), id, true)
+		defer statsReader.Close()
 		if err != nil {
-			return err
+			log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
+			return
 		}
+		bufioReader := bufio.NewReader(statsReader)
+		for {
+			infos := []containerInfo{}
+			cInfo, err := getContainerStats(bufioReader, count, id)
 
-		_, err = writer.Write([]byte("\n"))
-		if err != nil {
-			return err
+			if err != nil {
+				log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting container info.")
+				return
+			}
+			infos = append(infos, cInfo)
+			for i := range infos {
+				if len(infos[i].Stats) > 0 {
+					infos[i].Stats[0].Timestamp = time.Now()
+				}
+			}
+
+			err = writeAggregatedStats(id, nil, "container", infos, uint64(memLimit), writer)
+			if err != nil {
+				return
+			}
+
+			time.Sleep(1 * time.Second)
+			count = 1
 		}
 	}
-	return nil
 }

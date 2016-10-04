@@ -18,26 +18,8 @@ if [[ ! -e /host/proc/ ]]; then
     ln -s /proc /host/proc
 fi
 
+docker run -i -d busybox:1
 
-docker run \
-  --volume=/:/rootfs:ro \
-  --volume=/var/run:/var/run:rw \
-  --volume=/sys:/sys:ro \
-  --volume=/var/lib/docker/:/var/lib/docker:ro \
-  --publish=8080:8080 \
-  --detach=true \
-  --name=cadvisor \
-  google/cadvisor:v0.22.0 --logtostderr
-
-
-echo "Waiting for cadvisor to come online"
-while true; do
-  if /usr/bin/curl -f -s http://localhost:8080/api >/dev/null 2>&1; then
-    break
-  fi
-  sleep .1
-done
-
-go test -timeout 20s -v ./...
+go test -timeout 30s -v ./...
 
 echo OK
