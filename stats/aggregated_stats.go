@@ -20,24 +20,22 @@ func convertToAggregatedStats(id string, containerIds map[string]string, resourc
 		return totalAggregatedStats
 	}
 
-	for i := 0; i < len(stats); i++ {
-		totalAggregatedStat := []AggregatedStat{}
-		for j := 0; j < len(stats[i].Stats); j++ {
-			aggStats := AggregatedStat{stats[i].Id, resourceType, memLimit, stats[i].Stats[j]}
-			if id == "" {
-				aggStats.Id = containerIds[stats[i].Id]
-			}
-			totalAggregatedStat = append(totalAggregatedStat, aggStats)
+	totalAggregatedStat := []AggregatedStat{}
+	for j := 0; j < len(stats); j++ {
+		aggStats := AggregatedStat{id, resourceType, memLimit, stats[j].Stats[0]}
+		if id == "" {
+			aggStats.Id = containerIds[stats[j].Id]
 		}
-		totalAggregatedStats = append(totalAggregatedStats, totalAggregatedStat)
+		totalAggregatedStat = append(totalAggregatedStat, aggStats)
 	}
+	totalAggregatedStats = append(totalAggregatedStats, totalAggregatedStat)
+
 	return totalAggregatedStats
 }
 
 func writeAggregatedStats(id string, containerIds map[string]string, resourceType string, infos []containerInfo, memLimit uint64, writer io.Writer) error {
 	aggregatedStats := convertToAggregatedStats(id, containerIds, resourceType, infos, memLimit)
 	for _, stat := range aggregatedStats {
-
 		data, err := json.Marshal(stat)
 		if err != nil {
 			return err
