@@ -16,7 +16,6 @@ import (
 	"github.com/rancher/host-api/dockersocketproxy"
 	"github.com/rancher/host-api/events"
 	"github.com/rancher/host-api/exec"
-	"github.com/rancher/host-api/healthcheck"
 	"github.com/rancher/host-api/logs"
 	"github.com/rancher/host-api/proxy"
 	"github.com/rancher/host-api/stats"
@@ -50,14 +49,6 @@ func main() {
 		} else {
 			logrus.SetOutput(output)
 		}
-	}
-
-	if config.Config.HaProxyMonitor {
-		err := healthcheck.Poll()
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		os.Exit(0)
 	}
 
 	processor := events.NewDockerEventsProcessor(config.Config.EventsPoolSize)
