@@ -1,13 +1,12 @@
 package stats
 
 import (
-	"fmt"
-	"strings"
-
 	"bufio"
 	"encoding/json"
+	"fmt"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/shirou/gopsutil/mem"
+	"strings"
 	"time"
 )
 
@@ -37,17 +36,15 @@ type DockerStats struct {
 	PidsStats struct {
 		Current int `json:"current"`
 	} `json:"pids_stats"`
-	Networks struct {
-		NetworkInterface map[string]struct {
-			RxBytes   int `json:"rx_bytes"`
-			RxDropped int `json:"rx_dropped"`
-			RxErrors  int `json:"rx_errors"`
-			RxPackets int `json:"rx_packets"`
-			TxBytes   int `json:"tx_bytes"`
-			TxDropped int `json:"tx_dropped"`
-			TxErrors  int `json:"tx_errors"`
-			TxPackets int `json:"tx_packets"`
-		}
+	Networks map[string]struct {
+		RxBytes   int `json:"rx_bytes"`
+		RxDropped int `json:"rx_dropped"`
+		RxErrors  int `json:"rx_errors"`
+		RxPackets int `json:"rx_packets"`
+		TxBytes   int `json:"tx_bytes"`
+		TxDropped int `json:"tx_dropped"`
+		TxErrors  int `json:"tx_errors"`
+		TxPackets int `json:"tx_packets"`
 	} `json:"networks"`
 	BlkioStats struct {
 		IoServiceBytesRecursive []struct {
@@ -276,7 +273,7 @@ func convertDockerStats(stats DockerStats) *containerStats {
 	containerStats.Cpu.Usage.User = uint64(stats.CPUStats.CPUUsage.UsageInKernelmode)
 	containerStats.Memory.Usage = uint64(stats.MemoryStats.Usage)
 	containerStats.Network.Interfaces = []InterfaceStats{}
-	for name, netStats := range stats.Networks.NetworkInterface {
+	for name, netStats := range stats.Networks {
 		data := InterfaceStats{}
 		data.Name = name
 		data.RxBytes = uint64(netStats.RxBytes)
