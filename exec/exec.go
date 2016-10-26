@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"io"
 	"net/url"
-
 	log "github.com/Sirupsen/logrus"
 	dockerClient "github.com/fsouza/go-dockerclient"
 
@@ -13,6 +12,7 @@ import (
 
 	"github.com/rancher/host-api/auth"
 	"github.com/rancher/host-api/events"
+	"runtime"
 )
 
 type ExecHandler struct {
@@ -142,6 +142,10 @@ func convert(execMap map[string]interface{}) dockerClient.CreateExecOptions {
 			}
 		}
 		config.Cmd = cmd
+		// this is a workaround. need Ui to pass "powershell" to exec into windows container
+		if runtime.GOOS == "windows" {
+			config.Cmd = []string{"powershell"}
+		}
 	}
 
 	return config

@@ -7,9 +7,10 @@ import (
 	"gopkg.in/fsnotify.v1"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
+	"path"
 )
 
 const healthCheckFileName = ".healthcheck"
@@ -106,7 +107,7 @@ func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, hea
 				wasntHealthCheck := !handleHealthCheck(event, healthCheckChannel)
 
 				if wasntHealthCheck && event.Op == fsnotify.Create && event.Name != watchDir {
-					id := path.Base(event.Name)
+					id := filepath.Base(event.Name)
 					if strings.HasPrefix(id, "tmp-") {
 						break
 					}

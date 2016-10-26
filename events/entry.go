@@ -5,6 +5,7 @@ import (
 	rclient "github.com/rancher/go-rancher/client"
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/host-api/util"
+	"fmt"
 )
 
 func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
@@ -54,6 +55,7 @@ func (de *DockerEventsProcessor) Process() error {
 	}
 	containers, err := dockerClient.ListContainers(listOpts)
 	if err != nil {
+		fmt.Printf("got you %v", err)
 		return err
 	}
 
