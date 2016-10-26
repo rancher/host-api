@@ -1,4 +1,4 @@
-// Copyright 2015 go-dockerclient authors. All rights reserved.
+// Copyright 2014 go-dockerclient authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -17,10 +17,36 @@ import (
 	"github.com/docker/docker/pkg/fileutils"
 )
 
-func createTarStream(srcPath string) (io.ReadCloser, error) {
+func createTarStream(srcPath, dockerfilePath string) (io.ReadCloser, error) {
 	excludes, err := parseDockerignore(srcPath)
 	if err != nil {
 		return nil, err
+	}
+
+	includes := []string{"."}
+
+	// If .dockerignore mentions .dockerignore or the Dockerfile
+	// then make sure we send both files over to the daemon
+	// because Dockerfile is, obviously, needed no matter what, and
+	// .dockerignore is needed to know if either one needs to be
+	// removed.  The deamon will remove them for us, if needed, after it
+	// parses the Dockerfile.
+	//
+	// https://github.com/docker/docker/issues/8330
+	//
+	forceIncludeFiles := []string{".dockerignore", dockerfilePath}
+
+	for _, includeFile := range forceIncludeFiles {
+		if includeFile == "" {
+			continue
+		}
+		keepThem, err := fileutils.Matches(includeFile, excludes)
+		if err != nil {
+			return nil, fmt.Errorf("cannot match .dockerfile: '%s', error: %s", includeFile, err)
+		}
+		if keepThem {
+			includes = append(includes, includeFile)
+		}
 	}
 
 	if err := validateContextDirectory(srcPath, excludes); err != nil {
@@ -28,6 +54,7 @@ func createTarStream(srcPath string) (io.ReadCloser, error) {
 	}
 	tarOpts := &archive.TarOptions{
 		ExcludePatterns: excludes,
+		IncludeFiles:    includes,
 		Compression:     archive.Uncompressed,
 		NoLchown:        true,
 	}
@@ -40,10 +67,10 @@ func createTarStream(srcPath string) (io.ReadCloser, error) {
 func validateContextDirectory(srcPath string, excludes []string) error {
 	return filepath.Walk(filepath.Join(srcPath, "."), func(filePath string, f os.FileInfo, err error) error {
 		// skip this directory/file if it's not in the path, it won't get added to the context
-		if relFilePath, err := filepath.Rel(srcPath, filePath); err != nil {
-			return err
-		} else if skip, err := fileutils.Matches(relFilePath, excludes); err != nil {
-			return err
+		if relFilePath, relErr := filepath.Rel(srcPath, filePath); relErr != nil {
+			return relErr
+		} else if skip, matchErr := fileutils.Matches(relFilePath, excludes); matchErr != nil {
+			return matchErr
 		} else if skip {
 			if f.IsDir() {
 				return filepath.SkipDir
@@ -84,16 +111,7 @@ func parseDockerignore(root string) ([]string, error) {
 	if err != nil && !os.IsNotExist(err) {
 		return excludes, fmt.Errorf("error reading .dockerignore: '%s'", err)
 	}
-	for _, pattern := range strings.Split(string(ignore), "\n") {
-		matches, err := filepath.Match(pattern, "Dockerfile")
-		if err != nil {
-			return excludes, fmt.Errorf("bad .dockerignore pattern: '%s', error: %s", pattern, err)
-		}
-		if matches {
-			return excludes, fmt.Errorf("dockerfile was excluded by .dockerignore pattern '%s'", pattern)
-		}
-		excludes = append(excludes, pattern)
-	}
+	excludes = strings.Split(string(ignore), "\n")
 
 	return excludes, nil
 }
