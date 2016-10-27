@@ -1,7 +1,10 @@
 package events
 
 import (
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/client"
 	rclient "github.com/rancher/go-rancher/client"
 	"testing"
 	"time"
@@ -14,20 +17,20 @@ func TestProcessDockerEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	processor.getDockerClient = func() (*docker.Client, error) {
+	processor.getDockerClient = func() (*client.Client, error) {
 		return dockerClient, nil
 	}
 
 	// Mock Handler
-	handledEvents := make(chan *docker.APIEvents, 10)
-	hFn := func(event *docker.APIEvents) error {
+	handledEvents := make(chan *events.Message, 10)
+	hFn := func(event *events.Message) error {
 		handledEvents <- event
 		return nil
 	}
 	handler := &testHandler{
 		handlerFunc: hFn,
 	}
-	processor.getHandlers = func(dockerClient *docker.Client,
+	processor.getHandlers = func(dockerClient *client.Client,
 		rancherClient *rclient.RancherClient) (map[string][]Handler, error) {
 		return map[string][]Handler{"start": {handler}}, nil
 	}
@@ -38,26 +41,32 @@ func TestProcessDockerEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: preexistRunning.ID, Force: true,
-			RemoveVolumes: true}); err != nil {
+		if err := dockerClient.ContainerRemove(context.Background(), preexistRunning.ID, types.ContainerRemoveOptions{
+			Force:         true,
+			RemoveVolumes: true,
+		}); err != nil {
 			t.Fatal(err)
 		}
 	}()
-	if err := dockerClient.StartContainer(preexistRunning.ID, &docker.HostConfig{}); err != nil {
+	if err := dockerClient.ContainerStart(context.Background(), preexistRunning.ID, types.ContainerStartOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	preexistPaused, _ := createNetTestContainer(dockerClient, "10.1.2.3")
 	defer func() {
-		dockerClient.UnpauseContainer(preexistPaused.ID)
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: preexistPaused.ID, Force: true,
-			RemoveVolumes: true}); err != nil {
+		if err := dockerClient.ContainerUnpause(context.Background(), preexistPaused.ID); err != nil {
+			t.Fatal(err)
+		}
+		if err := dockerClient.ContainerRemove(context.Background(), preexistPaused.ID, types.ContainerRemoveOptions{
+			Force:         true,
+			RemoveVolumes: true,
+		}); err != nil {
 			t.Fatal(err)
 		}
 	}()
-	if err := dockerClient.StartContainer(preexistPaused.ID, &docker.HostConfig{}); err != nil {
+	if err := dockerClient.ContainerStart(context.Background(), preexistPaused.ID, types.ContainerStartOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	dockerClient.PauseContainer(preexistPaused.ID)
+	dockerClient.ContainerPause(context.Background(), preexistPaused.ID)
 
 	if err := processor.Process(); err != nil {
 		t.Fatal(err)

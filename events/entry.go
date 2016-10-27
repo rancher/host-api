@@ -1,7 +1,11 @@
 package events
 
 import (
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	rclient "github.com/rancher/go-rancher/client"
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/host-api/util"
@@ -18,8 +22,8 @@ func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
 
 type DockerEventsProcessor struct {
 	poolSize         int
-	getDockerClient  func() (*docker.Client, error)
-	getHandlers      func(*docker.Client, *rclient.RancherClient) (map[string][]Handler, error)
+	getDockerClient  func() (*client.Client, error)
+	getHandlers      func(*client.Client, *rclient.RancherClient) (map[string][]Handler, error)
 	getRancherClient func() (*rclient.RancherClient, error)
 }
 
@@ -48,17 +52,20 @@ func (de *DockerEventsProcessor) Process() error {
 	rancherStateWatcher := newRancherStateWatcher(router.listener, getContainerStateDir(), nil)
 	go rancherStateWatcher.watch()
 
-	listOpts := docker.ListContainersOptions{
-		All:     true,
-		Filters: map[string][]string{"status": {"paused", "running"}},
+	filter := filters.NewArgs()
+	filter.Add("status", "paused")
+	filter.Add("status", "running")
+	listOpts := types.ContainerListOptions{
+		All:    true,
+		Filter: filter,
 	}
-	containers, err := dockerClient.ListContainers(listOpts)
+	containers, err := dockerClient.ContainerList(context.Background(), listOpts)
 	if err != nil {
 		return err
 	}
 
 	for _, c := range containers {
-		event := &docker.APIEvents{
+		event := &events.Message{
 			ID:     c.ID,
 			Status: "start",
 			From:   simulatedEvent,
@@ -68,11 +75,11 @@ func (de *DockerEventsProcessor) Process() error {
 	return nil
 }
 
-func getDockerClientFn() (*docker.Client, error) {
+func getDockerClientFn() (*client.Client, error) {
 	return NewDockerClient()
 }
 
-func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherClient) (map[string][]Handler, error) {
+func getHandlersFn(dockerClient *client.Client, rancherClient *rclient.RancherClient) (map[string][]Handler, error) {
 
 	handlers := map[string][]Handler{}
 

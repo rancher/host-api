@@ -8,7 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/docker/engine-api/client"
+	"github.com/docker/docker/client"
 
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
@@ -101,12 +101,12 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 		}
 	} else {
 		statsReader, err := dclient.ContainerStats(context.Background(), id, true)
-		defer statsReader.Close()
+		defer statsReader.Body.Close()
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
 			return
 		}
-		bufioReader := bufio.NewReader(statsReader)
+		bufioReader := bufio.NewReader(statsReader.Body)
 		for {
 			infos := []containerInfo{}
 			cInfo, err := getContainerStats(bufioReader, count, id)

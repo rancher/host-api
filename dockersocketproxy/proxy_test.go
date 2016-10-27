@@ -12,16 +12,19 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/websocket"
 	"gopkg.in/check.v1"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/host-api/events"
 	"github.com/rancher/host-api/testutils"
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/proxy"
 	wsp_utils "github.com/rancher/websocket-proxy/testutils"
+	"golang.org/x/net/context"
 )
 
 func Test(t *testing.T) {
@@ -29,7 +32,7 @@ func Test(t *testing.T) {
 }
 
 type ProxyTestSuite struct {
-	client     *docker.Client
+	client     *client.Client
 	privateKey interface{}
 }
 
@@ -41,6 +44,7 @@ func (s *ProxyTestSuite) TestSimpleCalls(c *check.C) {
 
 	encoded := encodeRequest("GET", "/containers/json?all=1", nil, c)
 	ws.WriteMessage(websocket.TextMessage, encoded)
+
 	checkResponse(map[string]string{"HTTP/1.1 200 OK": ""}, ws, c)
 
 	encoded = encodeRequest("GET", "/images/json", nil, c)
@@ -52,7 +56,7 @@ func (s *ProxyTestSuite) TestStartAndConnect(c *check.C) {
 	ws := s.connect(c)
 	defer ws.Close()
 
-	createConfig := &docker.Config{
+	createConfig := container.Config{
 		Image:     "ibuildthecloud/helloworld:latest",
 		Tty:       true,
 		OpenStdin: true,
@@ -69,7 +73,7 @@ func (s *ProxyTestSuite) TestInteractive(c *check.C) {
 	ws := s.connect(c)
 	defer ws.Close()
 
-	createConfig := &docker.Config{
+	createConfig := container.Config{
 		Image:     "ibuildthecloud/helloworld:latest",
 		Tty:       true,
 		OpenStdin: true,
@@ -128,7 +132,7 @@ func (s *ProxyTestSuite) TestToCompareDockerClientBehavior(c *check.C) {
 }
 */
 
-func (s *ProxyTestSuite) createAndStart(ws *websocket.Conn, createConfig *docker.Config, c *check.C) *docker.Container {
+func (s *ProxyTestSuite) createAndStart(ws *websocket.Conn, createConfig container.Config, c *check.C) *types.ContainerJSON {
 	body, err := json.Marshal(createConfig)
 	if err != nil {
 		c.Fatal("Failed to marshal json. %#v", err)
@@ -136,7 +140,7 @@ func (s *ProxyTestSuite) createAndStart(ws *websocket.Conn, createConfig *docker
 	encoded := encodeRequest("POST", "/containers/create", body, c)
 	ws.WriteMessage(websocket.TextMessage, encoded)
 	respMsg := checkResponse(map[string]string{"HTTP/1.1 201 Created": ""}, ws, c)
-	container := &docker.Container{}
+	container := &types.ContainerJSON{}
 	found := false
 	for _, line := range strings.Split(respMsg, "\n") {
 		if strings.HasPrefix(line, "{") {
@@ -247,6 +251,7 @@ func (s *ProxyTestSuite) setupWebsocketProxy() {
 	handlers["/v1/dockersocket/"] = &Handler{}
 	go backend.ConnectToProxy("ws://localhost:4444/v1/connectbackend?token="+signedToken, handlers)
 	s.pullImage("ibuildthecloud/helloworld", "latest")
+	time.Sleep(time.Second * time.Duration(2))
 }
 
 func (s *ProxyTestSuite) SetUpSuite(c *check.C) {
@@ -259,11 +264,7 @@ func (s *ProxyTestSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *ProxyTestSuite) pullImage(imageRepo, imageTag string) error {
-	imageOptions := docker.PullImageOptions{
-		Repository: imageRepo,
-		Tag:        imageTag,
-	}
-	imageAuth := docker.AuthConfiguration{}
 	log.Infof("Pulling %v:%v image.", imageRepo, imageTag)
-	return s.client.PullImage(imageOptions, imageAuth)
+	_, err := s.client.ImagePull(context.Background(), imageRepo+":"+imageTag, types.ImagePullOptions{})
+	return err
 }

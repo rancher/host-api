@@ -1,9 +1,10 @@
 package events
 
 import (
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
+	"golang.org/x/net/context"
 )
 
 type SimpleDockerClient interface {
-	InspectContainer(id string) (*docker.Container, error)
+	ContainerInspect(context context.Context, id string) (types.ContainerJSON, error)
 }

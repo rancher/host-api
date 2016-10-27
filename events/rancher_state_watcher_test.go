@@ -2,7 +2,7 @@ package events
 
 import (
 	"fmt"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types/events"
 	"gopkg.in/fsnotify.v1"
 	"io/ioutil"
 	"math/rand"
@@ -15,7 +15,7 @@ import (
 const watchTestDir = "watch-test"
 
 func TestNoWatchDir(t *testing.T) {
-	err := watchInternalFn(make(chan *docker.APIEvents, 1), "", time.Millisecond*1, time.Millisecond*1,
+	err := watchInternalFn(make(chan *events.Message, 1), "", time.Millisecond*1, time.Millisecond*1,
 		newWatcherFn, make(chan bool, 1))
 	if err != nil {
 		t.FailNow()
@@ -75,7 +75,7 @@ func TestDirAndFilesAlreadyExists(t *testing.T) {
 }
 
 func TestRestartLogic(t *testing.T) {
-	eventChan := make(chan *docker.APIEvents, 10)
+	eventChan := make(chan *events.Message, 10)
 	stopChan := make(chan bool, 1)
 	defer close(stopChan)
 	watcher := newRancherStateWatcher(eventChan, watchTestDir, stopChan)
@@ -83,7 +83,7 @@ func TestRestartLogic(t *testing.T) {
 	watcher.maxRestarts = 5
 	restartCount := 0
 
-	var mockWatchInternal = func(eventChannel chan<- *docker.APIEvents, watchDir string, interval,
+	var mockWatchInternal = func(eventChannel chan<- *events.Message, watchDir string, interval,
 		timeout time.Duration, newWatcherFn newWatcherFnDef, stopChannel <-chan bool) error {
 		restartCount++
 		return fmt.Errorf("Test error %v", restartCount)
@@ -124,7 +124,7 @@ func TestFSNotifyErrorChannel(t *testing.T) {
 	}
 	errors <- fmt.Errorf("Fake error")
 
-	eventChan := make(chan *docker.APIEvents, 10)
+	eventChan := make(chan *events.Message, 10)
 	stopChan := make(chan bool, 1)
 	defer close(stopChan)
 	if err := watchInternalFn(eventChan, watchTestDir, time.Millisecond*1,
@@ -133,7 +133,7 @@ func TestFSNotifyErrorChannel(t *testing.T) {
 	}
 }
 
-func assertEvent(fileName string, eventChan chan *docker.APIEvents, t *testing.T) {
+func assertEvent(fileName string, eventChan chan *events.Message, t *testing.T) {
 	select {
 	case event := <-eventChan:
 		if event.ID != fileName || event.Status != "start" ||
@@ -145,8 +145,8 @@ func assertEvent(fileName string, eventChan chan *docker.APIEvents, t *testing.T
 	}
 }
 
-func initWatcher(t *testing.T, postInit func(*rancherStateWatcher)) (chan *docker.APIEvents, chan bool) {
-	eventChan := make(chan *docker.APIEvents, 10)
+func initWatcher(t *testing.T, postInit func(*rancherStateWatcher)) (chan *events.Message, chan bool) {
+	eventChan := make(chan *events.Message, 10)
 	stopChan := make(chan bool, 1)
 	watcher := newRancherStateWatcher(eventChan, watchTestDir, stopChan)
 

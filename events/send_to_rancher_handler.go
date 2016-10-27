@@ -2,18 +2,20 @@ package events
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/client"
 	"github.com/rancher/event-subscriber/locks"
 	rclient "github.com/rancher/go-rancher/client"
 )
 
 type SendToRancherHandler struct {
-	client   SimpleDockerClient
+	client   *client.Client
 	rancher  *rclient.RancherClient
 	hostUuid string
 }
 
-func (h *SendToRancherHandler) Handle(event *docker.APIEvents) error {
+func (h *SendToRancherHandler) Handle(event *events.Message) error {
 	// rancher_state_watcher sends a simulated event to the event router to initiate ip injection.
 	// This event should not be sent.
 	if event.From == simulatedEvent {
@@ -28,9 +30,9 @@ func (h *SendToRancherHandler) Handle(event *docker.APIEvents) error {
 	}
 	defer lock.Unlock()
 
-	container, err := h.client.InspectContainer(event.ID)
+	container, err := h.client.ContainerInspect(context.Background(), event.ID)
 	if err != nil {
-		if _, ok := err.(*docker.NoSuchContainer); !ok {
+		if ok := client.IsErrContainerNotFound(err); !ok {
 			return err
 		}
 	}
@@ -42,9 +44,8 @@ func (h *SendToRancherHandler) Handle(event *docker.APIEvents) error {
 		ExternalTimestamp: int64(event.Time),
 		ReportedHostUuid:  h.hostUuid,
 	}
-	if container != nil {
+	if container.ID != "" {
 		containerEvent.DockerInspect = container
-
 	}
 
 	if _, err := h.rancher.ContainerEvent.Create(containerEvent); err != nil {

@@ -13,9 +13,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 
-	client "github.com/fsouza/go-dockerclient"
-
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/rancher/host-api/config"
+	"github.com/rancher/host-api/events"
 	"github.com/rancher/host-api/testutils"
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/proxy"
@@ -27,18 +29,18 @@ var privateKey interface{}
 func TestContainerStats(t *testing.T) {
 	dialer := &websocket.Dialer{}
 	headers := http.Header{}
-	c, err := client.NewClient("unix:///var/run/docker.sock")
+	c, err := events.NewDockerClient()
 	if err != nil {
 		t.Fatalf("Could not connect to docker, err: [%v]", err)
 	}
-	allCtrs, err := c.ListContainers(client.ListContainersOptions{})
+	allCtrs, err := c.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
 		t.Fatalf("Error listing all images, err : [%v]", err)
 	}
-	ctrs := []client.APIContainers{}
+	ctrs := []string{}
 	for _, ctr := range allCtrs {
 		if strings.HasPrefix(ctr.Image, "busybox:1") {
-			ctrs = append(ctrs, ctr)
+			ctrs = append(ctrs, ctr.ID)
 		}
 	}
 	if len(ctrs) != 1 {
@@ -52,7 +54,7 @@ func TestContainerStats(t *testing.T) {
 	}
 
 	for i, ctr := range ctrs {
-		cIds[ctr.ID] = "1i" + strconv.Itoa(i+1)
+		cIds[ctr] = "1i" + strconv.Itoa(i+1)
 	}
 
 	log.Infof("%+v", cIds)
@@ -94,16 +96,14 @@ func unTestContainerStatSingleContainer(t *testing.T) {
 	dialer := &websocket.Dialer{}
 	headers := http.Header{}
 
-	c, err := client.NewClient("unix:///var/run/docker.sock")
+	c, err := events.NewDockerClient()
 	if err != nil {
 		t.Fatalf("Could not connect to docker, err: [%v]", err)
 	}
 
-	ctrs, err := c.ListContainers(client.ListContainersOptions{
-		Filters: map[string][]string{
-			"image": {"google/cadvisor"},
-		},
-	})
+	filter := filters.NewArgs()
+	filter.Add("image", "")
+	ctrs, err := c.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil || len(ctrs) == 0 {
 		t.Fatalf("Error listing all images, err : [%v]", err)
 	}

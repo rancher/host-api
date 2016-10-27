@@ -9,12 +9,12 @@ import (
 	_ "time"
 
 	log "github.com/Sirupsen/logrus"
-	dockerClient "github.com/fsouza/go-dockerclient"
 
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
 
-	// "github.com/rancher/host-api/app/common/connect"
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
 	"github.com/rancher/host-api/auth"
 	"github.com/rancher/host-api/events"
 )
@@ -58,41 +58,30 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 		return
 	}
 
-	reader, writer := io.Pipe()
+	logopts := types.ContainerLogsOptions{
+		Follow:     follow,
+		ShowStdout: true,
+		ShowStderr: true,
+		Timestamps: true,
+		Tail:       tail,
+	}
 
-	containerRef, err := client.InspectContainer(container)
+	reader, err := client.ContainerLogs(context.Background(), container, logopts)
 	if err != nil {
 		return
 	}
 
-	logopts := dockerClient.LogsOptions{
-		Container:  container,
-		Follow:     follow,
-		Stdout:     true,
-		Stderr:     true,
-		Timestamps: true,
-		Tail:       tail,
-	}
-	if containerRef.Config.Tty {
-		logopts.OutputStream = stdbothWriter{writer}
-		logopts.RawTerminal = true
-	} else {
-		logopts.OutputStream = stdoutWriter{writer}
-		logopts.ErrorStream = stderrorWriter{writer}
-		logopts.RawTerminal = false
-	}
-
-	go func(w *io.PipeWriter) {
+	go func(r io.ReadCloser) {
 		for {
 			_, ok := <-incomingMessages
 			if !ok {
-				w.Close()
+				r.Close()
 				return
 			}
 		}
-	}(writer)
+	}(reader)
 
-	go func(r *io.PipeReader) {
+	go func(r io.ReadCloser) {
 		scanner := bufio.NewScanner(r)
 		scanner.Split(customSplit)
 		for scanner.Scan() {
@@ -108,12 +97,9 @@ func (l *LogsHandler) Handle(key string, initialMessage string, incomingMessages
 			log.WithFields(log.Fields{"error": err}).Error("Error with the container log scanner.")
 		}
 	}(reader)
-
-	// Returns an error, but ignoring it because it will always return an error when a streaming call is made.
-	client.Logs(logopts)
 }
 
-func customSplit(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func customSplit(data []byte, atEOF bool) (int, []byte, error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}

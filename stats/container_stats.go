@@ -8,8 +8,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/docker/engine-api/client"
-	"github.com/docker/engine-api/types"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
@@ -103,12 +103,12 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 	// get single container stats
 	if id != "" {
 		statsReader, err := dclient.ContainerStats(context.Background(), id, true)
-		defer statsReader.Close()
+		defer statsReader.Body.Close()
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
 			return
 		}
-		bufioReader := bufio.NewReader(statsReader)
+		bufioReader := bufio.NewReader(statsReader.Body)
 		for {
 			infos := []containerInfo{}
 			cInfo, err := getContainerStats(bufioReader, count, id)
@@ -142,12 +142,12 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		bufioReaders := []*bufio.Reader{}
 		for i := 0; i < len(contList); i++ {
 			statsReader, err := dclient.ContainerStats(context.Background(), contList[i].ID, true)
-			defer statsReader.Close()
 			if err != nil {
 				log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
 				return
 			}
-			bufioReader := bufio.NewReader(statsReader)
+			defer statsReader.Body.Close()
+			bufioReader := bufio.NewReader(statsReader.Body)
 			bufioReaders = append(bufioReaders, bufioReader)
 			IDList = append(IDList, contList[i].ID)
 		}

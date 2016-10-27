@@ -3,8 +3,12 @@ package events
 import (
 	"bufio"
 	"fmt"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/client"
 	"github.com/rancher/event-subscriber/locks"
+	"golang.org/x/net/context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -25,7 +29,10 @@ func TestStartHandlerHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 
 	assertIpInject(injectedIp, c, dockerClient, t)
 }
@@ -38,18 +45,21 @@ func TestStartHandlerEnvVar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 
 	assertIpInject(injectedIp, c, dockerClient, t)
 }
 
-func assertIpInject(injectedIp string, c *docker.Container, dockerClient *docker.Client, t *testing.T) {
-	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
+func assertIpInject(injectedIp string, c types.ContainerJSON, dockerClient *client.Client, t *testing.T) {
+	if err := dockerClient.ContainerStart(context.Background(), c.ID, types.ContainerStartOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
 	handler := &StartHandler{Client: dockerClient}
-	event := &docker.APIEvents{ID: c.ID}
+	event := &events.Message{ID: c.ID}
 
 	if err := handler.Handle(event); err != nil {
 		t.Fatal(err)
@@ -69,11 +79,14 @@ func TestStartHandlerContainerNotRunning(t *testing.T) {
 
 	injectedIp := "10.1.2.3"
 	c, _ := createNetTestContainer(dockerClient, injectedIp)
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 	// Note we aren't starting the container in this test
 
 	handler := &StartHandler{Client: dockerClient}
-	event := &docker.APIEvents{ID: c.ID}
+	event := &events.Message{ID: c.ID}
 
 	if err := handler.Handle(event); err != nil {
 		t.Fatal(err)
@@ -81,34 +94,40 @@ func TestStartHandlerContainerNotRunning(t *testing.T) {
 }
 
 type mockClient struct {
-	inspect      func(id string) (*docker.Container, error)
-	container    *docker.Container
+	inspect      func(context context.Context, id string) (types.ContainerJSON, error)
+	container    types.ContainerJSON
 	inspectCount int
 }
 
-func (m *mockClient) InspectContainer(id string) (*docker.Container, error) {
-	return m.inspect(id)
+func (m *mockClient) ContainerInspect(context context.Context, id string) (types.ContainerJSON, error) {
+	return m.inspect(context, id)
 }
 
 func TestStoppedRunning(t *testing.T) {
 	injectedIp := "10.1.2.3"
 	id := "some id"
-	conf := &docker.Config{Labels: map[string]string{"io.rancher.container.system": "fakeSysContainer"}, Env: []string{"RANCHER_IP=" + injectedIp}}
-	state := docker.State{Pid: 123, Running: true}
-	container := &docker.Container{ID: id, Config: conf, State: state}
+	conf := &container.Config{Labels: map[string]string{"io.rancher.container.system": "fakeSysContainer"}, Env: []string{"RANCHER_IP=" + injectedIp}}
+	state := &types.ContainerState{Pid: 123, Running: true}
+	cont := types.ContainerJSON{
+		Config: conf,
+		ContainerJSONBase: &types.ContainerJSONBase{
+			ID:    id,
+			State: state,
+		},
+	}
 
 	var inspectCount int
-	mockedInspect := func(id string) (*docker.Container, error) {
+	mockedInspect := func(context context.Context, id string) (types.ContainerJSON, error) {
 		if inspectCount == 1 {
-			container.State.Running = false
+			cont.State.Running = false
 		}
 		inspectCount += 1
-		return container, nil
+		return cont, nil
 	}
 	mock := &mockClient{inspect: mockedInspect}
 
 	handler := &StartHandler{Client: mock}
-	event := &docker.APIEvents{ID: id}
+	event := &events.Message{ID: id}
 	if err := handler.Handle(event); err != nil {
 		t.Fatal("Error should not have been returned.")
 	}
@@ -121,7 +140,7 @@ func TestLocking(t *testing.T) {
 	lock := locks.Lock("start." + eventId)
 
 	handler := &StartHandler{Client: dockerClient}
-	event := &docker.APIEvents{ID: eventId}
+	event := &events.Message{ID: eventId}
 
 	if err := handler.Handle(event); err != nil {
 		// If the lock didn't work, this would fail because of the fake id.
@@ -146,17 +165,19 @@ func TestIpFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 
 	stateDir := makeContainerFile(t, c.ID, fmt.Sprintf(containerJsonTemplate, injectedIp))
 
-	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
+	if err := dockerClient.ContainerStart(context.Background(), c.ID, types.ContainerStartOptions{}); err != nil {
 		t.Fatal(err)
 	}
-
 	handler := &StartHandler{Client: dockerClient,
 		ContainerStateDir: stateDir}
-	event := &docker.APIEvents{ID: c.ID}
+	event := &events.Message{ID: c.ID}
 
 	if err := handler.Handle(event); err != nil {
 		t.Fatal(err)
@@ -180,17 +201,20 @@ func TestIpFromFileFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 
 	stateDir := makeContainerFile(t, c.ID, `{"nics": [{"ipAddresses": [{`)
 
-	if err := dockerClient.StartContainer(c.ID, &docker.HostConfig{}); err != nil {
+	if err := dockerClient.ContainerStart(context.Background(), c.ID, types.ContainerStartOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
 	handler := &StartHandler{Client: dockerClient,
 		ContainerStateDir: stateDir}
-	event := &docker.APIEvents{ID: c.ID}
+	event := &events.Message{ID: c.ID}
 
 	if err := handler.Handle(event); err == nil {
 		t.Fatal("Expected to get json unmarshalling error.")
@@ -206,7 +230,10 @@ func TestDnsWithLabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 
 	assertIpInject(injectedIp, c, dockerClient, t)
 
@@ -226,7 +253,10 @@ func TestDnsWithoutLabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 
 	assertIpInject(injectedIp, c, dockerClient, t)
 
@@ -253,40 +283,34 @@ func makeContainerFile(t *testing.T, id string, containerJson string) string {
 	return stateDir
 }
 
-func assertCheckCmdOutput(inputToCheck string, c *docker.Container, dockerClient *docker.Client, cmd []string, ifExists bool) (bool, error) {
-	createExecConf := docker.CreateExecOptions{
+func assertCheckCmdOutput(inputToCheck string, c types.ContainerJSON, dockerClient *client.Client, cmd []string, ifExists bool) (bool, error) {
+	createExecConf := types.ExecConfig{
 		AttachStdin:  false,
 		AttachStdout: true,
 		AttachStderr: false,
 		Tty:          false,
 		Cmd:          cmd,
-		Container:    c.ID,
 	}
-	createdExec, err := dockerClient.CreateExec(createExecConf)
+	createdExec, err := dockerClient.ContainerExecCreate(context.Background(), c.ID, createExecConf)
+	if err != nil {
+		return false, err
+	}
+	hijack, err := dockerClient.ContainerExecAttach(context.Background(), createdExec.ID, createExecConf)
 	if err != nil {
 		return false, err
 	}
 
-	reader, writer := io.Pipe()
-	startExecConf := docker.StartExecOptions{
-		OutputStream: writer,
-		Detach:       false,
-		Tty:          false,
-		RawTerminal:  false,
-	}
-
-	go dockerClient.StartExec(createdExec.ID, startExecConf)
-
-	lines := func(reader io.Reader) chan string {
+	lines := func(reader io.ReadCloser) chan string {
 		lines := make(chan string)
-		go func(r io.Reader) {
+		go func(r io.ReadCloser) {
 			scanner := bufio.NewScanner(r)
 			for scanner.Scan() {
 				lines <- scanner.Text()
 			}
+			r.Close()
 		}(reader)
 		return lines
-	}(reader)
+	}(hijack.Conn)
 
 	timer := time.NewTimer(1 * time.Second)
 	found := false

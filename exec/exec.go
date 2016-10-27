@@ -6,11 +6,12 @@ import (
 	"net/url"
 
 	log "github.com/Sirupsen/logrus"
-	dockerClient "github.com/fsouza/go-dockerclient"
 
 	"github.com/rancher/websocket-proxy/backend"
 	"github.com/rancher/websocket-proxy/common"
 
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
 	"github.com/rancher/host-api/auth"
 	"github.com/rancher/host-api/events"
 )
@@ -33,7 +34,7 @@ func (h *ExecHandler) Handle(key string, initialMessage string, incomingMessages
 	}
 
 	execMap := token.Claims["exec"].(map[string]interface{})
-	execConfig := convert(execMap)
+	execConfig, id := convert(execMap)
 
 	client, err := events.NewDockerClient()
 	if err != nil {
@@ -41,19 +42,20 @@ func (h *ExecHandler) Handle(key string, initialMessage string, incomingMessages
 		return
 	}
 
-	outputReader, outputWriter := io.Pipe()
-	inputReader, inputWriter := io.Pipe()
-
-	execObj, err := client.CreateExec(execConfig)
+	execObj, err := client.ContainerExecCreate(context.Background(), id, execConfig)
+	if err != nil {
+		return
+	}
+	hijackResp, err := client.ContainerExecAttach(context.Background(), execObj.ID, execConfig)
 	if err != nil {
 		return
 	}
 
-	go func(w *io.PipeWriter) {
+	go func(w io.WriteCloser) {
 		for {
 			msg, ok := <-incomingMessages
 			if !ok {
-				if _, err := inputWriter.Write([]byte("\x04")); err != nil {
+				if _, err := w.Write([]byte("\x04")); err != nil {
 					log.WithFields(log.Fields{"error": err}).Error("Error writing EOT message.")
 				}
 				w.Close()
@@ -64,11 +66,11 @@ func (h *ExecHandler) Handle(key string, initialMessage string, incomingMessages
 				log.WithFields(log.Fields{"error": err}).Error("Error decoding message.")
 				continue
 			}
-			inputWriter.Write([]byte(data))
+			w.Write([]byte(data))
 		}
-	}(outputWriter)
+	}(hijackResp.Conn)
 
-	go func(r *io.PipeReader) {
+	go func(r io.Reader) {
 		buffer := make([]byte, 4096, 4096)
 		for {
 			c, err := r.Read(buffer)
@@ -85,22 +87,13 @@ func (h *ExecHandler) Handle(key string, initialMessage string, incomingMessages
 				break
 			}
 		}
-	}(outputReader)
-
-	startConfig := dockerClient.StartExecOptions{
-		Detach:       false,
-		Tty:          true,
-		RawTerminal:  true,
-		InputStream:  inputReader,
-		OutputStream: outputWriter,
-	}
-
-	client.StartExec(execObj.ID, startConfig)
+	}(hijackResp.Reader)
 }
 
-func convert(execMap map[string]interface{}) dockerClient.CreateExecOptions {
+func convert(execMap map[string]interface{}) (types.ExecConfig, string) {
 	// Not fancy at all
-	config := dockerClient.CreateExecOptions{}
+	config := types.ExecConfig{}
+	containerID := ""
 
 	if param, ok := execMap["AttachStdin"]; ok {
 		if val, ok := param.(bool); ok {
@@ -128,7 +121,7 @@ func convert(execMap map[string]interface{}) dockerClient.CreateExecOptions {
 
 	if param, ok := execMap["Container"]; ok {
 		if val, ok := param.(string); ok {
-			config.Container = val
+			containerID = val
 		}
 	}
 
@@ -144,5 +137,5 @@ func convert(execMap map[string]interface{}) dockerClient.CreateExecOptions {
 		config.Cmd = cmd
 	}
 
-	return config
+	return config, containerID
 }
