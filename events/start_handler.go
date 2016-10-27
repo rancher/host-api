@@ -13,7 +13,9 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
 	"github.com/rancher/event-subscriber/locks"
 )
 
@@ -30,7 +32,7 @@ type StartHandler struct {
 	ContainerStateDir string
 }
 
-func getDnsSearch(container *docker.Container) []string {
+func getDnsSearch(container types.ContainerJSON) []string {
 	var defaultDomains []string
 	var svcNameSpace string
 	var stackNameSpace string
@@ -62,7 +64,7 @@ func getDnsSearch(container *docker.Container) []string {
 	return defaultDomains
 }
 
-func setupResolvConf(container *docker.Container) error {
+func setupResolvConf(container types.ContainerJSON) error {
 	if _, ok := container.Config.Labels[RancherSystemLabelKey]; ok {
 		return nil
 	}
@@ -122,7 +124,7 @@ func setupResolvConf(container *docker.Container) error {
 	return ioutil.WriteFile(p, buffer.Bytes(), 0666)
 }
 
-func (h *StartHandler) Handle(event *docker.APIEvents) error {
+func (h *StartHandler) Handle(event *events.Message) error {
 	// Note: event.ID == container's ID
 	lock := locks.Lock("start." + event.ID)
 	if lock == nil {
@@ -131,7 +133,7 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	}
 	defer lock.Unlock()
 
-	c, err := h.Client.InspectContainer(event.ID)
+	c, err := h.Client.ContainerInspect(context.Background(), event.ID)
 	if err != nil {
 		return err
 	}
@@ -161,7 +163,7 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	log.Infof("Assigning IP [%s], ContainerId [%s], Pid [%v]", rancherIP, event.ID, pid)
 	if err := configureIP(strconv.Itoa(pid), rancherIP); err != nil {
 		// If it stopped running, don't return error
-		c, inspectErr := h.Client.InspectContainer(event.ID)
+		c, inspectErr := h.Client.ContainerInspect(context.Background(), event.ID)
 		if inspectErr != nil {
 			log.Warn("Failed to inspect container: ", event.ID, inspectErr)
 			return err
@@ -182,7 +184,7 @@ func (h *StartHandler) Handle(event *docker.APIEvents) error {
 	return setupResolvConf(c)
 }
 
-func (h *StartHandler) getRancherIP(c *docker.Container) (string, error) {
+func (h *StartHandler) getRancherIP(c types.ContainerJSON) (string, error) {
 	if ip, ok := c.Config.Labels[RancherIPLabelKey]; ok {
 		return ip, nil
 	}

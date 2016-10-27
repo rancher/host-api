@@ -1,7 +1,9 @@
 package events
 
 import (
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
 	rclient "github.com/rancher/go-rancher/client"
 	"testing"
 )
@@ -11,13 +13,16 @@ func TestSendToRancherHandler(t *testing.T) {
 
 	injectedIp := "10.1.2.3"
 	c, _ := createNetTestContainer(dockerClient, injectedIp)
-	defer dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true, RemoveVolumes: true})
+	defer dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
 
 	from := "foo/bar"
 	status := "create"
 	var eventTime int64 = 1426091566
 	hostUuid := "host-123"
-	event := &docker.APIEvents{ID: c.ID, From: from, Status: status, Time: eventTime}
+	event := &events.Message{ID: c.ID, From: from, Status: status, Time: eventTime}
 	expectedEvent := &rclient.ContainerEvent{
 		ExternalId:        c.ID,
 		ExternalFrom:      from,

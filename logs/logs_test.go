@@ -9,7 +9,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	docker "github.com/fsouza/go-dockerclient"
+	docker "github.com/docker/docker/client"
 	"github.com/gorilla/websocket"
 	"gopkg.in/check.v1"
 
@@ -17,6 +17,9 @@ import (
 	"github.com/rancher/websocket-proxy/proxy"
 	wsp_utils "github.com/rancher/websocket-proxy/testutils"
 
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/rancher/host-api/config"
 	"github.com/rancher/host-api/events"
 	"github.com/rancher/host-api/testutils"
@@ -46,29 +49,22 @@ func (s *LogsTestSuite) doLogTest(tty bool, prefix string, c *check.C) {
 	dialer := &websocket.Dialer{}
 	headers := http.Header{}
 
-	createContainerOptions := docker.CreateContainerOptions{
-		Name: "logstest",
-		Config: &docker.Config{
-			Image:     "hello-world",
-			OpenStdin: true,
-			Tty:       tty,
-		},
-	}
-
-	newCtr, err := s.client.CreateContainer(createContainerOptions)
+	newCtr, err := s.client.ContainerCreate(context.Background(), &container.Config{
+		Image:     "hello-world",
+		OpenStdin: true,
+		Tty:       true,
+	}, nil, nil, "logstest")
 	if err != nil {
 		c.Fatalf("Error creating container, err : [%v]", err)
 	}
-	err = s.client.StartContainer(newCtr.ID, nil)
+	err = s.client.ContainerStart(context.Background(), newCtr.ID, types.ContainerStartOptions{})
 	if err != nil {
 		c.Fatalf("Error starting container, err : [%v]", err)
 	}
 	defer func() {
-		s.client.StopContainer(newCtr.ID, 1)
-		s.client.RemoveContainer(docker.RemoveContainerOptions{
-			ID:            newCtr.ID,
-			RemoveVolumes: true,
+		s.client.ContainerRemove(context.Background(), newCtr.ID, types.ContainerRemoveOptions{
 			Force:         true,
+			RemoveVolumes: true,
 		})
 	}()
 
@@ -126,7 +122,6 @@ func (s *LogsTestSuite) setupWebsocketProxy() {
 	handlers := make(map[string]backend.Handler)
 	handlers["/v1/logs/"] = &LogsHandler{}
 	go backend.ConnectToProxy("ws://localhost:3333/v1/connectbackend?token="+signedToken, handlers)
-	s.pullImage("hello-world", "latest")
 }
 
 func (s *LogsTestSuite) SetUpSuite(c *check.C) {
@@ -135,15 +130,13 @@ func (s *LogsTestSuite) SetUpSuite(c *check.C) {
 		c.Fatalf("Could not connect to docker, err: [%v]", err)
 	}
 	s.client = cli
+	s.pullImage("hello-world", "latest")
+	time.Sleep(time.Duration(2) * time.Second)
 	s.setupWebsocketProxy()
 }
 
 func (s *LogsTestSuite) pullImage(imageRepo, imageTag string) error {
-	imageOptions := docker.PullImageOptions{
-		Repository: imageRepo,
-		Tag:        imageTag,
-	}
-	imageAuth := docker.AuthConfiguration{}
 	log.Infof("Pulling %v:%v image.", imageRepo, imageTag)
-	return s.client.PullImage(imageOptions, imageAuth)
+	_, err := s.client.ImagePull(context.Background(), imageRepo+":"+imageTag, types.ImagePullOptions{})
+	return err
 }

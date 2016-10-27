@@ -3,7 +3,7 @@ package events
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types/events"
 	"gopkg.in/fsnotify.v1"
 	"io/ioutil"
 	"os"
@@ -23,12 +23,12 @@ type rancherStateWatcher struct {
 	restartWaitUnit          time.Duration
 	maxRestarts              int
 	watchDir                 string
-	eventChannel             chan<- *docker.APIEvents
-	watchInternal            func(chan<- *docker.APIEvents, string, time.Duration, time.Duration, newWatcherFnDef, <-chan bool) error
+	eventChannel             chan<- *events.Message
+	watchInternal            func(chan<- *events.Message, string, time.Duration, time.Duration, newWatcherFnDef, <-chan bool) error
 	stopChannel              <-chan bool
 }
 
-func newRancherStateWatcher(eventChannel chan<- *docker.APIEvents, watchDir string, stopChannel <-chan bool) *rancherStateWatcher {
+func newRancherStateWatcher(eventChannel chan<- *events.Message, watchDir string, stopChannel <-chan bool) *rancherStateWatcher {
 	return &rancherStateWatcher{
 		healthCheckTimeout:       time.Second * 10,
 		healthCheckWriteInterval: time.Second * 8,
@@ -71,7 +71,7 @@ func (w *rancherStateWatcher) watch() {
 	}
 }
 
-func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, healthCheckWriteInterval time.Duration,
+func watchInternalFn(eventChannel chan<- *events.Message, watchDir string, healthCheckWriteInterval time.Duration,
 	healthCheckTimeout time.Duration, newWatcher newWatcherFnDef, stopChannel <-chan bool) error {
 	if watchDir == "" {
 		// For backwards compatability, this shouldn't raise an error. Just log and return
@@ -110,7 +110,7 @@ func watchInternalFn(eventChannel chan<- *docker.APIEvents, watchDir string, hea
 					if strings.HasPrefix(id, "tmp-") {
 						break
 					}
-					dockerEvent := &docker.APIEvents{
+					dockerEvent := &events.Message{
 						ID:     id,
 						Status: "start",
 						From:   simulatedEvent,

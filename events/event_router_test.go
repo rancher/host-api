@@ -1,25 +1,27 @@
 package events
 
 import (
-	_ "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/distribution/context"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/client"
 	"testing"
 	"time"
 )
 
 type testHandler struct {
-	handledEvents chan *docker.APIEvents
+	handledEvents chan *events.Message
 	t             *testing.T
-	handlerFunc   func(event *docker.APIEvents) error
+	handlerFunc   func(event *events.Message) error
 }
 
-func (th *testHandler) Handle(event *docker.APIEvents) error {
+func (th *testHandler) Handle(event *events.Message) error {
 	return th.handlerFunc(event)
 }
 
 func TestEventRouter(t *testing.T) {
-	handledEvents := make(chan *docker.APIEvents, 10)
-	hFn := func(event *docker.APIEvents) error {
+	handledEvents := make(chan *events.Message, 10)
+	hFn := func(event *events.Message) error {
 		handledEvents <- event
 		return nil
 	}
@@ -55,8 +57,8 @@ func TestWorkerTimeout(t *testing.T) {
 	// This test proves the worker timeout and retry logic is working properly by making
 	// the handler take longer than the worker timeout and then asserting that all events
 	// were still handled.
-	handledEvents := make(chan *docker.APIEvents, 10)
-	hFn := func(event *docker.APIEvents) error {
+	handledEvents := make(chan *events.Message, 10)
+	hFn := func(event *events.Message) error {
 		time.Sleep(20 * time.Millisecond)
 		handledEvents <- event
 		return nil
@@ -95,15 +97,14 @@ func TestWorkerTimeout(t *testing.T) {
 	}
 }
 
-func spinupContainers(createCount int, dockerClient *docker.Client, t *testing.T) {
+func spinupContainers(createCount int, dockerClient *client.Client, t *testing.T) {
 	for i := 0; i < createCount; i++ {
 		c, err := createContainer(dockerClient)
 		if err != nil {
 			t.Fatalf("Failure: %v", err)
 		}
 
-		removeOpts := docker.RemoveContainerOptions{ID: c.ID}
-		if err := dockerClient.RemoveContainer(removeOpts); err != nil {
+		if err := dockerClient.ContainerRemove(context.Background(), c.ID, types.ContainerRemoveOptions{}); err != nil {
 			t.Fatalf("Failure", err)
 		}
 	}
