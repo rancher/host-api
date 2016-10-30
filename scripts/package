@@ -8,8 +8,6 @@ SUFFIX=""
 [ "${ARCH}" != "amd64" ] && SUFFIX="_${ARCH}"
 CONTENT=$(</proc/sys/kernel/random/uuid)
 
-cp -f scripts/lib/net-util.sh bin/net-util.sh
-
 rm -rf dist/artifacts
 
 mkdir -p build/${CONTENT}

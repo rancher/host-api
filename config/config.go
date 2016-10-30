@@ -28,7 +28,6 @@ type config struct {
 	CattleUrl       string
 	CattleAccessKey string
 	CattleSecretKey string
-	CattleStateDir  string
 	PidFile         string
 	LogFile         string
 }
@@ -68,7 +67,6 @@ func Parse() error {
 	flag.StringVar(&Config.CattleUrl, "cattle-url", "", "URL for accessing cattle api")
 	flag.StringVar(&Config.CattleAccessKey, "cattle-access-key", "", "Access key for cattle api")
 	flag.StringVar(&Config.CattleSecretKey, "cattle-secret-key", "", "Secret key for cattle api")
-	flag.StringVar(&Config.CattleStateDir, "cattle-state-dir", "", "Directory where Rancher state is persisted.")
 	flag.StringVar(&Config.PidFile, "pid-file", "", "PID file")
 	flag.StringVar(&Config.LogFile, "log", "", "Log file")
 

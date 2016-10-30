@@ -8,11 +8,6 @@ if [ -x "$(which wrapdocker)" ]; then
     docker ps -q
 fi
 
-if [ ! -x "$(which net-util.sh)" ]; then
-    cp scripts/lib/net-util.sh /usr/local/bin/net-util.sh
-    chmod +x /usr/local/bin/net-util.sh
-fi
-
 if [[ ! -e /host/proc/ ]]; then
     mkdir -p /host
     ln -s /proc /host/proc
