@@ -1,10 +1,11 @@
 package events
 
 import (
-	"github.com/fsouza/go-dockerclient"
-	rclient "github.com/rancher/go-rancher/client"
 	"testing"
 	"time"
+
+	"github.com/fsouza/go-dockerclient"
+	rclient "github.com/rancher/go-rancher/client"
 )
 
 func TestProcessDockerEvents(t *testing.T) {
@@ -89,11 +90,6 @@ func TestGetHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Cattle API config params not set, so SendToRancherHandler shouldn't get configured
-	if len(handlers) != 1 && len(handlers["start"]) != 1 {
-		t.Fatalf("Expected 1 configured hanlder: %v", handlers)
-	}
-
 	// RancherClient is not nil, so SendToRancherHandler should be configured
 	handlers, err = getHandlersFn(dockerClient, &rclient.RancherClient{})
 	if err != nil {

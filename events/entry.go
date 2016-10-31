@@ -7,6 +7,10 @@ import (
 	"github.com/rancher/host-api/util"
 )
 
+const (
+	simulatedEvent = "-simulated-"
+)
+
 func NewDockerEventsProcessor(poolSize int) *DockerEventsProcessor {
 	return &DockerEventsProcessor{
 		poolSize:         poolSize,
@@ -45,9 +49,6 @@ func (de *DockerEventsProcessor) Process() error {
 	}
 	router.Start()
 
-	rancherStateWatcher := newRancherStateWatcher(router.listener, getContainerStateDir(), nil)
-	go rancherStateWatcher.watch()
-
 	listOpts := docker.ListContainersOptions{
 		All:     true,
 		Filters: map[string][]string{"status": {"paused", "running"}},
@@ -76,13 +77,6 @@ func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherCl
 
 	handlers := map[string][]Handler{}
 
-	// Start Handler
-	startHandler := &StartHandler{
-		Client:            dockerClient,
-		ContainerStateDir: getContainerStateDir(),
-	}
-	handlers["start"] = []Handler{startHandler}
-
 	// Rancher Event Handler
 	if rancherClient != nil {
 		sendToRancherHandler := &SendToRancherHandler{
@@ -102,8 +96,4 @@ func getHandlersFn(dockerClient *docker.Client, rancherClient *rclient.RancherCl
 
 func getHostUuid() string {
 	return config.Config.HostUuid
-}
-
-func getContainerStateDir() string {
-	return config.Config.CattleStateDir
 }

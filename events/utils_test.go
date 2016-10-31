@@ -1,10 +1,10 @@
 package events
 
 import (
-	"github.com/fsouza/go-dockerclient"
 	"os"
-	"os/exec"
 	"testing"
+
+	"github.com/fsouza/go-dockerclient"
 )
 
 func useEnvVars() bool {
@@ -97,21 +97,6 @@ func prep(t *testing.T) *docker.Client {
 	dockerClient, err := NewDockerClient()
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	if useEnvVars() {
-		buildCommand = func(pid string, ip string) *exec.Cmd {
-			// Assumes boot2docker. Also assumes that:
-			// - nsenter and net-utils.sh are on the path in the b2d vm
-			// - This link exists: ln -s /proc/ /host/proc
-			// See the README.md in this directory for setup details.
-			dockerMachine := os.Getenv("CATTLE_TEST_DOCKER_MACHINE_HOST")
-			if dockerMachine != "" {
-				return exec.Command("docker-machine", "ssh", dockerMachine, "sudo net-util.sh -p "+pid+" -i "+ip)
-			} else {
-				return exec.Command("boot2docker", "ssh", "-t", "sudo", "net-util.sh", "-p", pid, "-i", ip)
-			}
-		}
 	}
 
 	return dockerClient

@@ -14,8 +14,6 @@ if [ -n "${PID}" ]; then
     sleep 1
 fi
 
-cp bin/host-api bin/net-util.sh ${CATTLE_HOME}/bin
+cp bin/host-api ${CATTLE_HOME}/bin
 
 chmod +x ${CATTLE_HOME}/bin/host-api
-chmod +x ${CATTLE_HOME}/bin/net-util.sh
-
