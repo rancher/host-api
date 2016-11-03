@@ -140,16 +140,18 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		}
 		IDList := []string{}
 		bufioReaders := []*bufio.Reader{}
-		for i := 0; i < len(contList); i++ {
-			statsReader, err := dclient.ContainerStats(context.Background(), contList[i].ID, true)
-			defer statsReader.Close()
-			if err != nil {
-				log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
-				return
+		for _, cont := range contList {
+			if _, ok := containerIds[cont.ID]; ok {
+				statsReader, err := dclient.ContainerStats(context.Background(), cont.ID, true)
+				defer statsReader.Close()
+				if err != nil {
+					log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
+					return
+				}
+				bufioReader := bufio.NewReader(statsReader)
+				bufioReaders = append(bufioReaders, bufioReader)
+				IDList = append(IDList, cont.ID)
 			}
-			bufioReader := bufio.NewReader(statsReader)
-			bufioReaders = append(bufioReaders, bufioReader)
-			IDList = append(IDList, contList[i].ID)
 		}
 		for {
 			infos := []containerInfo{}
