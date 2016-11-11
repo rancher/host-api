@@ -6,6 +6,8 @@ import (
 	"fmt"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/shirou/gopsutil/mem"
+	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 	"strings"
 	"time"
 )
@@ -26,8 +28,8 @@ func parseRequestToken(tokenString string, parsedPublicKey interface{}) (*jwt.To
 	})
 }
 
-func getContainerStats(reader *bufio.Reader, count int, id string) (containerInfo, error) {
-	i, err := getDockerContainerInfo(reader, count, id)
+func getContainerStats(reader *bufio.Reader, count int, id string, pid int) (containerInfo, error) {
+	i, err := getDockerContainerInfo(reader, count, id, pid)
 	return i, err
 }
 
@@ -241,7 +243,7 @@ type InterfaceStats struct {
 	TxDropped uint64 `json:"tx_dropped"`
 }
 
-func getContainerInfo(reader *bufio.Reader, count int, id string) (containerInfo, error) {
+func getContainerInfo(reader *bufio.Reader, count int, id string, pid int) (containerInfo, error) {
 	contInfo := containerInfo{}
 	contInfo.Id = id
 	stats := []*containerStats{}
@@ -254,14 +256,14 @@ func getContainerInfo(reader *bufio.Reader, count int, id string) (containerInfo
 		if err != nil {
 			return containerInfo{}, err
 		}
-		contStats := convertDockerStats(dockerStats)
+		contStats := convertDockerStats(dockerStats, pid)
 		stats = append(stats, contStats)
 	}
 	contInfo.Stats = stats
 	return contInfo, nil
 }
 
-func convertDockerStats(stats DockerStats) *containerStats {
+func convertDockerStats(stats DockerStats, pid int) *containerStats {
 	containerStats := containerStats{}
 	containerStats.Timestamp = stats.Read
 	containerStats.Cpu.Usage.Total = uint64(stats.CPUStats.CPUUsage.TotalUsage)
@@ -273,7 +275,7 @@ func convertDockerStats(stats DockerStats) *containerStats {
 	containerStats.Cpu.Usage.User = uint64(stats.CPUStats.CPUUsage.UsageInKernelmode)
 	containerStats.Memory.Usage = uint64(stats.MemoryStats.Usage)
 	containerStats.Network.Interfaces = []InterfaceStats{}
-	for name, netStats := range stats.Networks {
+	for name, netStats := range getLinkStats(pid) {
 		data := InterfaceStats{}
 		data.Name = name
 		data.RxBytes = uint64(netStats.RxBytes)
@@ -311,4 +313,29 @@ func getMemCapcity() (uint64, error) {
 		return 0, err
 	}
 	return data.Total, nil
+}
+
+func getLinkStats(pid int) map[string]*netlink.LinkStatistics {
+	ret := map[string]*netlink.LinkStatistics{}
+	nsHandler, err := netns.GetFromPid(pid)
+	if err != nil {
+		return nil
+	}
+	defer nsHandler.Close()
+	handler, err := netlink.NewHandleAt(nsHandler)
+	if err != nil {
+		return nil
+	}
+	defer handler.Delete()
+	links, err := handler.LinkList()
+	if err != nil {
+		return nil
+	}
+	for _, link := range links {
+		attr := link.Attrs()
+		if attr.Name != "lo" {
+			ret[attr.Name] = attr.Statistics
+		}
+	}
+	return ret
 }

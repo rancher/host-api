@@ -100,16 +100,22 @@ func (s *StatsHandler) Handle(key string, initialMessage string, incomingMessage
 			count = 1
 		}
 	} else {
+		inspect, err := dclient.ContainerInspect(context.Background(), id)
+		if err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Can not inspect containers")
+			return
+		}
 		statsReader, err := dclient.ContainerStats(context.Background(), id, true)
-		defer statsReader.Close()
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
 			return
 		}
+		defer statsReader.Close()
+		pid := inspect.State.Pid
 		bufioReader := bufio.NewReader(statsReader)
 		for {
 			infos := []containerInfo{}
-			cInfo, err := getContainerStats(bufioReader, count, id)
+			cInfo, err := getContainerStats(bufioReader, count, id, pid)
 
 			if err != nil {
 				log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting container info.")
