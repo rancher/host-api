@@ -69,14 +69,14 @@ func getRootContainerInfo(count int) (containerInfo, error) {
 	return rootInfo, nil
 }
 
-func getDockerContainerInfo(reader *bufio.Reader, count int, id string) (containerInfo, error) {
-	return getContainerInfo(reader, count, id)
+func getDockerContainerInfo(reader *bufio.Reader, count int, id string, pid int) (containerInfo, error) {
+	return getContainerInfo(reader, count, id, pid)
 }
 
-func getAllDockerContainers(readers []*bufio.Reader, count int, IDList []string) ([]containerInfo, error) {
+func getAllDockerContainers(readers []*bufio.Reader, count int, IDList []string, pids []int) ([]containerInfo, error) {
 	ret := []containerInfo{}
 	for i, reader := range readers {
-		contInfo, err := getContainerInfo(reader, count, IDList[i])
+		contInfo, err := getContainerInfo(reader, count, IDList[i], pids[i])
 		if err != nil {
 			return []containerInfo{}, err
 		}

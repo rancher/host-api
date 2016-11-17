@@ -102,16 +102,23 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 
 	// get single container stats
 	if id != "" {
+		inspect, err := dclient.ContainerInspect(context.Background(), id)
+		if err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Can not inspect containers")
+			return
+		}
 		statsReader, err := dclient.ContainerStats(context.Background(), id, true)
-		defer statsReader.Close()
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
 			return
 		}
+		defer statsReader.Close()
+
+		pid := inspect.State.Pid
 		bufioReader := bufio.NewReader(statsReader)
 		for {
 			infos := []containerInfo{}
-			cInfo, err := getContainerStats(bufioReader, count, id)
+			cInfo, err := getContainerStats(bufioReader, count, id, pid)
 
 			if err != nil {
 				log.WithFields(log.Fields{"error": err, "id": id}).Error("Error getting container info.")
@@ -140,14 +147,21 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		}
 		IDList := []string{}
 		bufioReaders := []*bufio.Reader{}
+		pids := []int{}
 		for _, cont := range contList {
 			if _, ok := containerIds[cont.ID]; ok {
+				inspect, err := dclient.ContainerInspect(context.Background(), cont.ID)
+				if err != nil {
+					log.WithFields(log.Fields{"error": err}).Error("Can not inspect containers")
+					return
+				}
 				statsReader, err := dclient.ContainerStats(context.Background(), cont.ID, true)
-				defer statsReader.Close()
 				if err != nil {
 					log.WithFields(log.Fields{"error": err}).Error("Can not get stats reader from docker")
 					return
 				}
+				defer statsReader.Close()
+				pids = append(pids, inspect.State.Pid)
 				bufioReader := bufio.NewReader(statsReader)
 				bufioReaders = append(bufioReaders, bufioReader)
 				IDList = append(IDList, cont.ID)
@@ -155,7 +169,7 @@ func (s *ContainerStatsHandler) Handle(key string, initialMessage string, incomi
 		}
 		for {
 			infos := []containerInfo{}
-			allInfos, err := getAllDockerContainers(bufioReaders, count, IDList)
+			allInfos, err := getAllDockerContainers(bufioReaders, count, IDList, pids)
 			if err != nil {
 				log.WithFields(log.Fields{"error": err}).Error("Error getting all container info.")
 				return
