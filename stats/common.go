@@ -36,131 +36,131 @@ func getContainerStats(reader *bufio.Reader, count int, id string, pid int) (con
 type DockerStats struct {
 	Read      time.Time `json:"read"`
 	PidsStats struct {
-		Current int `json:"current"`
+		Current int64 `json:"current"`
 	} `json:"pids_stats"`
 	Networks map[string]struct {
-		RxBytes   int `json:"rx_bytes"`
-		RxDropped int `json:"rx_dropped"`
-		RxErrors  int `json:"rx_errors"`
-		RxPackets int `json:"rx_packets"`
-		TxBytes   int `json:"tx_bytes"`
-		TxDropped int `json:"tx_dropped"`
-		TxErrors  int `json:"tx_errors"`
-		TxPackets int `json:"tx_packets"`
+		RxBytes   int64 `json:"rx_bytes"`
+		RxDropped int64 `json:"rx_dropped"`
+		RxErrors  int64 `json:"rx_errors"`
+		RxPackets int64 `json:"rx_packets"`
+		TxBytes   int64 `json:"tx_bytes"`
+		TxDropped int64 `json:"tx_dropped"`
+		TxErrors  int64 `json:"tx_errors"`
+		TxPackets int64 `json:"tx_packets"`
 	} `json:"networks"`
 	BlkioStats struct {
 		IoServiceBytesRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"io_service_bytes_recursive"`
 		IoServicedRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"io_serviced_recursive"`
 		IoQueueRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"io_queue_recursive"`
 		IoServiceTimeRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"io_service_time_recursive"`
 		IoWaitTimeRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"io_wait_time_recursive"`
 		IoMergedRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"io_merged_recursive"`
 		IoTimeRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"io_time_recursive"`
 		SectorsRecursive []struct {
-			Major int    `json:"major"`
-			Minor int    `json:"minor"`
+			Major int64  `json:"major"`
+			Minor int64  `json:"minor"`
 			Op    string `json:"op"`
-			Value int    `json:"value"`
+			Value int64  `json:"value"`
 		} `json:"sectors_recursive"`
 	} `json:"blkio_stats"`
 	MemoryStats struct {
 		Stats struct {
-			TotalPgmajfault         int `json:"total_pgmajfault"`
-			Cache                   int `json:"cache"`
-			MappedFile              int `json:"mapped_file"`
-			TotalInactiveFile       int `json:"total_inactive_file"`
-			Pgpgout                 int `json:"pgpgout"`
-			Rss                     int `json:"rss"`
-			TotalMappedFile         int `json:"total_mapped_file"`
-			Writeback               int `json:"writeback"`
-			Unevictable             int `json:"unevictable"`
-			Pgpgin                  int `json:"pgpgin"`
-			TotalUnevictable        int `json:"total_unevictable"`
-			Pgmajfault              int `json:"pgmajfault"`
-			TotalRss                int `json:"total_rss"`
-			TotalRssHuge            int `json:"total_rss_huge"`
-			TotalWriteback          int `json:"total_writeback"`
-			TotalInactiveAnon       int `json:"total_inactive_anon"`
-			RssHuge                 int `json:"rss_huge"`
-			HierarchicalMemoryLimit int `json:"hierarchical_memory_limit"`
-			TotalPgfault            int `json:"total_pgfault"`
-			TotalActiveFile         int `json:"total_active_file"`
-			ActiveAnon              int `json:"active_anon"`
-			TotalActiveAnon         int `json:"total_active_anon"`
-			TotalPgpgout            int `json:"total_pgpgout"`
-			TotalCache              int `json:"total_cache"`
-			InactiveAnon            int `json:"inactive_anon"`
-			ActiveFile              int `json:"active_file"`
-			Pgfault                 int `json:"pgfault"`
-			InactiveFile            int `json:"inactive_file"`
-			TotalPgpgin             int `json:"total_pgpgin"`
+			TotalPgmajfault         int64  `json:"total_pgmajfault"`
+			Cache                   int64  `json:"cache"`
+			MappedFile              int64  `json:"mapped_file"`
+			TotalInactiveFile       int64  `json:"total_inactive_file"`
+			Pgpgout                 int64  `json:"pgpgout"`
+			Rss                     int64  `json:"rss"`
+			TotalMappedFile         int64  `json:"total_mapped_file"`
+			Writeback               int64  `json:"writeback"`
+			Unevictable             int64  `json:"unevictable"`
+			Pgpgin                  int64  `json:"pgpgin"`
+			TotalUnevictable        int64  `json:"total_unevictable"`
+			Pgmajfault              int64  `json:"pgmajfault"`
+			TotalRss                int64  `json:"total_rss"`
+			TotalRssHuge            int64  `json:"total_rss_huge"`
+			TotalWriteback          int64  `json:"total_writeback"`
+			TotalInactiveAnon       int64  `json:"total_inactive_anon"`
+			RssHuge                 int64  `json:"rss_huge"`
+			HierarchicalMemoryLimit uint64 `json:"hierarchical_memory_limit"`
+			TotalPgfault            int64  `json:"total_pgfault"`
+			TotalActiveFile         int64  `json:"total_active_file"`
+			ActiveAnon              int64  `json:"active_anon"`
+			TotalActiveAnon         int64  `json:"total_active_anon"`
+			TotalPgpgout            int64  `json:"total_pgpgout"`
+			TotalCache              int64  `json:"total_cache"`
+			InactiveAnon            int64  `json:"inactive_anon"`
+			ActiveFile              int64  `json:"active_file"`
+			Pgfault                 int64  `json:"pgfault"`
+			InactiveFile            int64  `json:"inactive_file"`
+			TotalPgpgin             int64  `json:"total_pgpgin"`
 		} `json:"stats"`
-		MaxUsage int `json:"max_usage"`
-		Usage    int `json:"usage"`
-		Failcnt  int `json:"failcnt"`
-		Limit    int `json:"limit"`
+		MaxUsage int64 `json:"max_usage"`
+		Usage    int64 `json:"usage"`
+		Failcnt  int64 `json:"failcnt"`
+		Limit    int64 `json:"limit"`
 	} `json:"memory_stats"`
 	CPUStats struct {
 		CPUUsage struct {
-			PercpuUsage       []int `json:"percpu_usage"`
-			UsageInUsermode   int   `json:"usage_in_usermode"`
-			TotalUsage        int   `json:"total_usage"`
-			UsageInKernelmode int   `json:"usage_in_kernelmode"`
+			PercpuUsage       []int64 `json:"percpu_usage"`
+			UsageInUsermode   int64   `json:"usage_in_usermode"`
+			TotalUsage        int64   `json:"total_usage"`
+			UsageInKernelmode int64   `json:"usage_in_kernelmode"`
 		} `json:"cpu_usage"`
 		SystemCPUUsage int64 `json:"system_cpu_usage"`
 		ThrottlingData struct {
-			Periods          int `json:"periods"`
-			ThrottledPeriods int `json:"throttled_periods"`
-			ThrottledTime    int `json:"throttled_time"`
+			Periods          int64 `json:"periods"`
+			ThrottledPeriods int64 `json:"throttled_periods"`
+			ThrottledTime    int64 `json:"throttled_time"`
 		} `json:"throttling_data"`
 	} `json:"cpu_stats"`
 	PrecpuStats struct {
 		CPUUsage struct {
-			PercpuUsage       []int `json:"percpu_usage"`
-			UsageInUsermode   int   `json:"usage_in_usermode"`
-			TotalUsage        int   `json:"total_usage"`
-			UsageInKernelmode int   `json:"usage_in_kernelmode"`
+			PercpuUsage       []int64 `json:"percpu_usage"`
+			UsageInUsermode   int64   `json:"usage_in_usermode"`
+			TotalUsage        int64   `json:"total_usage"`
+			UsageInKernelmode int64   `json:"usage_in_kernelmode"`
 		} `json:"cpu_usage"`
 		SystemCPUUsage int64 `json:"system_cpu_usage"`
 		ThrottlingData struct {
-			Periods          int `json:"periods"`
-			ThrottledPeriods int `json:"throttled_periods"`
-			ThrottledTime    int `json:"throttled_time"`
+			Periods          int64 `json:"periods"`
+			ThrottledPeriods int64 `json:"throttled_periods"`
+			ThrottledTime    int64 `json:"throttled_time"`
 		} `json:"throttling_data"`
 	} `json:"precpu_stats"`
 }
